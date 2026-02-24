@@ -67,6 +67,7 @@ else:
 tab1, tab2 = st.tabs(["📝 REGISTRO", "📊 DASHBOARD"])
 
 with tab1:
+        st.header("📊 REGISTRO DE VENTAS")
     detalle = st.selectbox("DETALLE DE GESTIÓN *", ["SELECCIONA", "VENTA FIJA", "NO-VENTA", "CLIENTE AGENDADO", "REFERIDO"])
     
     with st.form(key=f"f_{st.session_state.form_key}"):
@@ -88,6 +89,7 @@ with tab1:
                 d_cl = st.text_input("DNI/RUC Cliente *")
                 t_op = st.selectbox("Operación *", ["CAPTACIÓN", "MIGRACIÓN", "ALTA"])
                 prod = st.selectbox("Producto *", ["BA", "DUO", "TRIO"])
+                pil = st.radio("Piloto?", ["NO", "SI"], horizontal=True)
             with cb:
                 dir_ins = st.text_input("Dirección *").upper()
                 c1 = st.text_input("Celular 1 (9 dígitos) *", max_chars=9)
@@ -95,7 +97,7 @@ with tab1:
                 n_ped = st.text_input("N° Pedido")
                 mail = st.text_input("Email")
                 c_fe = st.text_input("Código FE")
-                pil = st.radio("Piloto?", ["NO", "SI"], horizontal=True)
+               
 
         if st.form_submit_button("💾 GUARDAR GESTIÓN", use_container_width=True):
             error = False
@@ -205,4 +207,5 @@ with tab2:
             st.subheader("🎯 Mix de Gestión")
             fig_pie = px.pie(df_filtered, names="DETALLE", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(fig_pie, use_container_width=True)
+
 
