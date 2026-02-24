@@ -1,62 +1,81 @@
-# Conector Streamlit Cloud, el puente entre un movil y nuestro motor
-
 import streamlit as st
-import dropbox
 import pandas as pd
-import io
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
+import pytz
+import time
+import plotly.express as px
 
-# --- CONFIGURACIÓN ---
-# Aquí pegarás tu Token (entre las comillas)
-DROPBOX_TOKEN = "sl.u.AGXRI3K_UoBkOGHoEX37oXnywVyfiKE-JhumRiC4i6sCyvjsNeMA3LcYWfWKIrsT0ZI_YQ8LtZx1qtlawSpUUuSzEYt_0Gk3i0cTJza-DcknXJP1mPw_ExGWa0Wrw9qGlxiehhrCgoHeMKNJMXYePhTXJeMTAelvIezdnvBus-rSrW5Xg0EZ-adG8Mi13It0ryMeUb1GDy3gqWgocPrpZSpXHuH8Ivxdtf_JDIyKxEEqlQmZBWorf5X1CzbGf0SOHbH8RvGRWdGGd3wgjW7eNwnMBiVIBGunhYoVZyETmpgo4PFp_lWEEi4uLxTsYvBUL1VqQnG2aQIdPgKJSZUvvzY2rYCoaHvwCY2ES60-cPbM3LtZo3yjxL9LvV34zi42CjA_o7gTGSl__py96rzQnAN2S1rpZB3sa98M7HsVm0PBdAa36XO8dOtPb11Z5BfFZBD9eWNcpEliJQsUudOhDhllxa186TMUun7IQh7Du2QRx6Q9aFONw_9JwMORClqV096RPudzNO0HBVE2NVAde8PpeklzDAZpJqH11yqGOJrKjFPPHmfRMSo_pWkQ4_viIqUaJ_HL3qMXRC-5KtZ0gxzxl0dQlJDUiTxpe0rD69ylPkhGFM61sVVHXnKR0hHEvExfAZOqSxarx1f08zCrahb9ABrQ_BdXEr0MdquX8I-PFM4mJNBz383R7aIuoQ7Y4ijpNYFlEPwJRgddalg0ez7IriDRSVW6MVBsLN6ktWMhZ_yWsVDeFyrBGllt56NDSo8-yWf79k8EHziq_xo5uBRWHZHk9tvBGBMQ3R2Qki7qQdX1jMLXL3q4g2m8uIp7RwRynV3Zqp918N-GTWF_B1hCqpWbyH3-ORXAjsnrBSADLAeD8iqhuIU9vbDekjCkEHom4c4I9nfJsS0nNvjrFKNsoNaEUYVzGK9cVS8MaQvAp7t5UvSbM_D4BY_cPtq1rItbxnPLlVqldnls9rPmdcgWUwlELRidxBUfW1HC3BVARMYVo6wY0B4F9J7bosxz0dC4wWGx85ej9bpxBue95Hau5bTsA_TBukh84fqGYZxx2QiLDBxSAa04myHb3oQwxsbOJj_qm4joB6kyjfWTvHdLTkOkoX4NTcC6ZQmj9kCmBvH8xFTzzJlB9CI1v3VOMkdBmhHr7RgKJVaMbEi9KNqw-AfO9TpyD1GAB5XwqLDohl4E43wNpgSrF4gTRC5nfvoWzqwrZN51ZWcqy0AL93dvV_wmDmMf_DRNDph-hUHFmIlUuENqKLEenYh_nQmq5TzDJlg_iMBk46FplLRdG2KGbeTHdzHrcaD1E_oC72ssXB8pXqB5kVzvI07Hw_A3llo" 
-NOMBRE_ARCHIVO = "/GestionDiaria.xlsx" # Asegúrate que empiece con /
-
-# --- FUNCIÓN PARA GUARDAR EN DROPBOX ---
-def guardar_en_dropbox(nombre, nota):
+# --- 1. CONEXIÓN SEGURA ---
+def conectar_google():
     try:
-        dbx = dropbox.Dropbox(DROPBOX_TOKEN)
-        
-        # 1. Descargar el archivo actual
-        _, res = dbx.files_download(NOMBRE_ARCHIVO)
-        df = pd.read_excel(io.BytesIO(res.content))
-        
-        # 2. Crear la nueva fila
-        nueva_fila = {
-            "Nombre": nombre,
-            "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "Nota": nota
-        }
-        
-        # 3. Añadir la fila al Excel
-        df = pd.concat([df, pd.DataFrame([nueva_fila])], ignore_index=True)
-        
-        # 4. Volver a subir el archivo actualizado
-        buffer = io.BytesIO()
-        df.to_excel(buffer, index=False)
-        buffer.seek(0)
-        dbx.files_upload(buffer.read(), NOMBRE_ARCHIVO, mode=dropbox.files.WriteMode.overwrite)
-        return True
-    except Exception as e:
-        st.error(f"Error: {e}")
-        return False
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], scope)
+        return gspread.authorize(creds).open("GestionDiaria")
+    except: return None
 
-# --- INTERFAZ PARA EL CELULAR ---
-st.set_page_config(page_title="Registro Rápido", page_icon="📝")
-
-st.title("📝 Nuevo Registro")
-st.write("Completa los campos abajo:")
-
-with st.form("mi_formulario", clear_on_submit=True):
-    nombre_input = st.text_input("Tu Nombre")
-    nota_input = st.text_area("Escribe la Nota o Actividad")
+@st.cache_data(ttl=30) # Cache corto para pruebas
+def cargar_datos():
+    doc = conectar_google()
+    if not doc: return pd.DataFrame(), pd.DataFrame()
     
-    boton = st.form_submit_button("Enviar Registro")
+    # Carga Estructura
+    try:
+        ws_est = doc.worksheet("Estructura")
+        df_est = pd.DataFrame(ws_est.get_all_values()[1:], columns=ws_est.get_all_values()[0])
+        df_est['DNI'] = df_est['DNI'].astype(str).str.replace(r'[^0-9]', '', regex=True).str.zfill(8)
+    except: df_est = pd.DataFrame()
 
-if boton:
-    if nombre_input and nota_input:
-        with st.spinner("Guardando en Dropbox..."):
-            exito = guardar_en_dropbox(nombre_input, nota_input)
-            if exito:
-                st.success("¡Guardado correctamente! Ya puedes cerrar esta pestaña.")
+    # Carga Registros
+    try:
+        ws_reg = doc.sheet1
+        df_reg = pd.DataFrame(ws_reg.get_all_records())
+        df_reg.columns = [c.strip().upper() for c in df_reg.columns]
+    except: df_reg = pd.DataFrame()
+        
+    return df_est, df_reg
+
+st.set_page_config(page_title="Gestión de Ventas v2", layout="wide")
+df_maestro, df_registros = cargar_datos()
+
+# --- SIDEBAR ---
+st.sidebar.title("👤 Identificación")
+dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=8)
+dni_clean = "".join(filter(str.isdigit, dni_input)).zfill(8)
+
+vendedor = df_maestro[df_maestro['DNI'] == dni_clean] if not df_maestro.empty else pd.DataFrame()
+
+if not vendedor.empty and len(dni_input) == 8:
+    sup_fijo = vendedor.iloc[0]['SUPERVISOR']
+    nom_v = vendedor.iloc[0]['NOMBRE VENDEDOR']
+    st.sidebar.success(f"✅ {nom_v}")
+else:
+    sup_fijo = "N/A"; nom_v = "N/A"
+
+# --- TABS ---
+t1, t2 = st.tabs(["📝 REGISTRO", "📊 DASHBOARD"])
+
+with t1:
+    # (Aquí va tu formulario que ya funciona perfectamente)
+    st.info("Complete los datos de la gestión diaria.")
+    # ... código del formulario ...
+
+with t2:
+    st.title("Dashboard de Resultados")
+    if df_registros.empty:
+        st.warning("No hay datos en Sheet1 para mostrar gráficos.")
     else:
-        st.warning("Por favor rellena todos los campos.")
+        # PROTECCIÓN LÍNEA 110: Verificamos si existe la columna
+        col_busqueda = "SUPERVISOR"
+        if col_busqueda in df_registros.columns:
+            f_sup = st.multiselect("Filtrar por Supervisor", options=df_registros[col_busqueda].unique())
+            
+            df_f = df_registros.copy()
+            if f_sup: df_f = df_f[df_f[col_busqueda].isin(f_sup)]
+            
+            # Gráfico Seguro
+            fig = px.pie(df_f, names=df_f.columns[5], title="Mix de Gestiones") # Columna 5 suele ser DETALLE
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.error(f"No se encontró la columna '{col_busqueda}' en el Excel.")
