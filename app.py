@@ -129,6 +129,7 @@ with tab1:
                     st.rerun()
                 except Exception as e: st.error(f"Error al guardar: {e}")
 
+
 with tab2:
     st.header("📊 Dashboard Operativo")
     
@@ -163,11 +164,11 @@ with tab2:
 
         st.divider()
 
-        # --- RANKING POR VENDEDOR Y DÍAS DEL MES ---
+        # --- RANKING CON SEMÁFORO (40 REGISTROS = VERDE) ---
         st.subheader("🏆 Ranking de Productividad Diaria")
         
         if "FECHA" in df_filtered.columns and "NOMBRE VENDEDOR" in df_filtered.columns:
-            # Crear tabla pivote: Filas (Vendedores), Columnas (Días), Valores (Cuenta de registros)
+            # Crear tabla pivote
             ranking_df = df_filtered.pivot_table(
                 index="NOMBRE VENDEDOR", 
                 columns="FECHA", 
@@ -176,26 +177,32 @@ with tab2:
                 fill_value=0
             )
             
-            # Añadir una columna de Total al final para el Ranking
+            # Añadir columna de Total
             ranking_df["TOTAL MES"] = ranking_df.sum(axis=1)
             ranking_df = ranking_df.sort_values(by="TOTAL MES", ascending=False)
             
-            # Mostrar la tabla con un diseño limpio
-            st.dataframe(ranking_df, use_container_width=True)
-            st.caption("La tabla muestra la cantidad de gestiones realizadas por cada vendedor en cada día detectado.")
+            # Función para aplicar el color verde si es >= 40
+            def resaltar_metas(val):
+                color = 'background-color: #90EE90' if val >= 40 else ''
+                return color
+
+            # Aplicar el estilo a la tabla
+            st.dataframe(ranking_df.style.applymap(resaltar_metas), use_container_width=True)
+            st.caption("🟢 Las celdas en verde indican que el vendedor alcanzó la meta de 40 registros o más.")
 
         st.divider()
 
-        # --- GRÁFICOS ---
+        # --- GRÁFICOS INFERIORES ---
         col_g1, col_g2 = st.columns(2)
         
         with col_g1:
-            st.subheader("📅 Tendencia")
+            st.subheader("📅 Tendencia Diaria")
             df_counts = df_filtered.groupby("FECHA").size().reset_index(name="Cantidad")
-            fig_linea = px.bar(df_counts, x="FECHA", y="Cantidad", text_auto=True)
+            fig_linea = px.bar(df_counts, x="FECHA", y="Cantidad", text_auto=True, color_discrete_sequence=["#1E90FF"])
             st.plotly_chart(fig_linea, use_container_width=True)
             
         with col_g2:
             st.subheader("🎯 Mix de Gestión")
-            fig_pie = px.pie(df_filtered, names="DETALLE", hole=0.4)
+            fig_pie = px.pie(df_filtered, names="DETALLE", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(fig_pie, use_container_width=True)
+
