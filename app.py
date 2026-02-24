@@ -130,10 +130,68 @@ with tab1:
                 except Exception as e: st.error(f"Error al guardar: {e}")
 
 with tab2:
-    st.header("Dashboard")
+    st.header("📊 Dashboard Operativo")
+    
     if df_registros.empty:
-        st.info("Sin datos para mostrar.")
+        st.info("Aún no hay datos registrados para mostrar el análisis.")
     else:
-        # Gráfico por detalle de gestión
-        c_name = "DETALLE" if "DETALLE" in df_registros.columns else df_registros.columns[5]
-        st.plotly_chart(px.pie(df_registros, names=c_name, title="Mix de Gestiones", hole=0.4), use_container_width=True)
+        # --- SECCIÓN DE FILTROS ---
+        st.subheader("Filtros de Búsqueda")
+        col_f1, col_f2 = st.columns(2)
+        
+        with col_f1:
+            # Filtro por Zonal
+            zonales = ["TODOS"] + sorted(df_registros["ZONAL"].unique().tolist())
+            zonal_sel = st.selectbox("Filtrar por Zonal", zonales)
+            
+        with col_f2:
+            # Filtro por Supervisor (se adapta a la zonal elegida)
+            df_temp = df_registros if zonal_sel == "TODOS" else df_registros[df_registros["ZONAL"] == zonal_sel]
+            supervisores = ["TODOS"] + sorted(df_temp["SUPERVISOR"].unique().tolist())
+            sup_sel = st.selectbox("Filtrar por Supervisor", supervisores)
+
+        # Aplicar filtros al DataFrame final del Dashboard
+        df_filtered = df_registros.copy()
+        if zonal_sel != "TODOS":
+            df_filtered = df_filtered[df_filtered["ZONAL"] == zonal_sel]
+        if sup_sel != "TODOS":
+            df_filtered = df_filtered[df_filtered["SUPERVISOR"] == sup_sel]
+
+        # --- MÉTRICAS RÁPIDAS ---
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Registros Filtrados", len(df_filtered))
+        ventas_f = len(df_filtered[df_filtered["DETALLE"] == "VENTA FIJA"])
+        m2.metric("Ventas Fijas", ventas_f)
+        m3.metric("% Efectividad", f"{(ventas_f/len(df_filtered)*100):.1f}%" if len(df_filtered)>0 else "0%")
+
+        st.divider()
+
+        # --- GRÁFICO DÍA A DÍA ---
+        st.subheader("📅 Evolución Diaria de Registros")
+        # Agrupamos por la columna FECHA (que es la penúltima que configuramos)
+        if "FECHA" in df_filtered.columns:
+            df_counts = df_filtered.groupby("FECHA").size().reset_index(name="Cantidad")
+            # Ordenamos por fecha para que el gráfico sea cronológico
+            df_counts["FECHA_DT"] = pd.to_datetime(df_counts["FECHA"], dayfirst=True)
+            df_counts = df_counts.sort_values("FECHA_DT")
+            
+            fig_linea = px.bar(
+                df_counts, 
+                x="FECHA", 
+                y="Cantidad", 
+                title="Cantidad de Registros por Día",
+                text_auto=True,
+                color_discrete_sequence=["#00CC96"]
+            )
+            st.plotly_chart(fig_linea, use_container_width=True)
+
+        # --- GRÁFICO POR TIPO DE GESTIÓN ---
+        st.subheader("🎯 Mix de Gestiones")
+        fig_pie = px.pie(
+            df_filtered, 
+            names="DETALLE", 
+            hole=0.4,
+            color_discrete_sequence=px.colors.qualitative.Safe
+        )
+        st.plotly_chart(fig_pie, use_container_width=True)
+
