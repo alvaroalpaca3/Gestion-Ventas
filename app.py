@@ -142,7 +142,7 @@ with tab2:
         st.info("Aún no hay datos registrados para mostrar el análisis.")
     else:
         # --- SECCIÓN DE FILTROS ---
-        st.subheader("Filtros de Búsqueda")
+        st.markdown("Filtros de Búsqueda")
         col_f1, col_f2 = st.columns(2)
         
         with col_f1:
@@ -170,7 +170,7 @@ with tab2:
         st.divider()
 
         # --- RANKING CON SEMÁFORO (40 REGISTROS = VERDE) ---
-        st.subheader("🏆 Ranking de Productividad Diaria")
+        st.markdown("🏆 Ranking de Productividad Diaria")
         
         if "FECHA" in df_filtered.columns and "NOMBRE VENDEDOR" in df_filtered.columns:
             # Crear tabla pivote
@@ -201,15 +201,16 @@ with tab2:
         col_g1, col_g2 = st.columns(2)
         
         with col_g1:
-            st.subheader("📅 Tendencia Diaria")
+            st.markdown("📅 Tendencia Diaria")
             df_counts = df_filtered.groupby("FECHA").size().reset_index(name="Cantidad")
             fig_linea = px.bar(df_counts, x="FECHA", y="Cantidad", text_auto=True, color_discrete_sequence=["#1E90FF"])
             st.plotly_chart(fig_linea, use_container_width=True)
             
         with col_g2:
-            st.subheader("🎯 Mix de Gestión")
+            st.markdown("🎯 Mix de Gestión")
             fig_pie = px.pie(df_filtered, names="DETALLE", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(fig_pie, use_container_width=True)
+
 
 
 
