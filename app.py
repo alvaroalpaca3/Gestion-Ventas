@@ -140,17 +140,14 @@ with tab2:
         col_f1, col_f2 = st.columns(2)
         
         with col_f1:
-            # Filtro por Zonal
             zonales = ["TODOS"] + sorted(df_registros["ZONAL"].unique().tolist())
             zonal_sel = st.selectbox("Filtrar por Zonal", zonales)
             
         with col_f2:
-            # Filtro por Supervisor (se adapta a la zonal elegida)
             df_temp = df_registros if zonal_sel == "TODOS" else df_registros[df_registros["ZONAL"] == zonal_sel]
             supervisores = ["TODOS"] + sorted(df_temp["SUPERVISOR"].unique().tolist())
             sup_sel = st.selectbox("Filtrar por Supervisor", supervisores)
 
-        # Aplicar filtros al DataFrame final del Dashboard
         df_filtered = df_registros.copy()
         if zonal_sel != "TODOS":
             df_filtered = df_filtered[df_filtered["ZONAL"] == zonal_sel]
@@ -166,32 +163,39 @@ with tab2:
 
         st.divider()
 
-        # --- GRÁFICO DÍA A DÍA ---
-        st.subheader("📅 Evolución Diaria de Registros")
-        # Agrupamos por la columna FECHA (que es la penúltima que configuramos)
-        if "FECHA" in df_filtered.columns:
-            df_counts = df_filtered.groupby("FECHA").size().reset_index(name="Cantidad")
-            # Ordenamos por fecha para que el gráfico sea cronológico
-            df_counts["FECHA_DT"] = pd.to_datetime(df_counts["FECHA"], dayfirst=True)
-            df_counts = df_counts.sort_values("FECHA_DT")
-            
-            fig_linea = px.bar(
-                df_counts, 
-                x="FECHA", 
-                y="Cantidad", 
-                title="Cantidad de Registros por Día",
-                text_auto=True,
-                color_discrete_sequence=["#00CC96"]
+        # --- RANKING POR VENDEDOR Y DÍAS DEL MES ---
+        st.subheader("🏆 Ranking de Productividad Diaria")
+        
+        if "FECHA" in df_filtered.columns and "NOMBRE VENDEDOR" in df_filtered.columns:
+            # Crear tabla pivote: Filas (Vendedores), Columnas (Días), Valores (Cuenta de registros)
+            ranking_df = df_filtered.pivot_table(
+                index="NOMBRE VENDEDOR", 
+                columns="FECHA", 
+                values="DETALLE", 
+                aggfunc="count", 
+                fill_value=0
             )
+            
+            # Añadir una columna de Total al final para el Ranking
+            ranking_df["TOTAL MES"] = ranking_df.sum(axis=1)
+            ranking_df = ranking_df.sort_values(by="TOTAL MES", ascending=False)
+            
+            # Mostrar la tabla con un diseño limpio
+            st.dataframe(ranking_df, use_container_width=True)
+            st.caption("La tabla muestra la cantidad de gestiones realizadas por cada vendedor en cada día detectado.")
+
+        st.divider()
+
+        # --- GRÁFICOS ---
+        col_g1, col_g2 = st.columns(2)
+        
+        with col_g1:
+            st.subheader("📅 Tendencia")
+            df_counts = df_filtered.groupby("FECHA").size().reset_index(name="Cantidad")
+            fig_linea = px.bar(df_counts, x="FECHA", y="Cantidad", text_auto=True)
             st.plotly_chart(fig_linea, use_container_width=True)
-
-        # --- GRÁFICO POR TIPO DE GESTIÓN ---
-        st.subheader("🎯 Mix de Gestiones")
-        fig_pie = px.pie(
-            df_filtered, 
-            names="DETALLE", 
-            hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Safe
-        )
-        st.plotly_chart(fig_pie, use_container_width=True)
-
+            
+        with col_g2:
+            st.subheader("🎯 Mix de Gestión")
+            fig_pie = px.pie(df_filtered, names="DETALLE", hole=0.4)
+            st.plotly_chart(fig_pie, use_container_width=True)
