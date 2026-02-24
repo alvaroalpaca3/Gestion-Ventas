@@ -64,6 +64,8 @@ else:
     nom_v = sup_v = zon_v = "N/A"
 
 # --- INTERFAZ ---
+st.header("📊SISTEMA DE GESTIÓN DIARIA")
+
 tab1, tab2 = st.tabs(["📝 REGISTRO", "📊 DASHBOARD"])
 
 with tab1:
@@ -134,7 +136,7 @@ with tab1:
 
 
 with tab2:
-    st.header("📊 Dashboard Operativo")
+    st.header("📊 DASHBOARD OPERATIVO")
     
     if df_registros.empty:
         st.info("Aún no hay datos registrados para mostrar el análisis.")
@@ -208,6 +210,7 @@ with tab2:
             st.subheader("🎯 Mix de Gestión")
             fig_pie = px.pie(df_filtered, names="DETALLE", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(fig_pie, use_container_width=True)
+
 
 
 
