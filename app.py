@@ -73,13 +73,14 @@ with tab1:
     
     detalle = st.selectbox("DETALLE DE GESTIÓN *", ["SELECCIONA", "VENTA FIJA", "NO-VENTA", "CLIENTE AGENDADO", "REFERIDO"])
     
-    with st.form(key=f"f_{st.session_state.form_key}"):
-        # Inicialización de variables
+    # Usamos el form_key para resetear el formulario tras guardar
+    with st.form(key=f"registro_form_{st.session_state.form_key}"):
+        # 1. Inicialización de variables para las 22 columnas
         t_op = n_cl = d_cl = dir_ins = mail = c1 = c2 = prod = c_fe = n_ped = pil = m_nv = n_ref = c_ref = "N/A"
 
         if detalle == "NO-VENTA":
             m_nv = st.selectbox("MOTIVO DE NO VENTA *", ["SELECCIONA", "COMPETENCIA", "MALA EXPERIENCIA", "CARGO ALTO", "SIN COBERTURA", "YA TIENE SERVICIO"])
-            st.info("💡 Solo llena el motivo. DNI y Zonal se guardan automáticamente.")
+            st.info("💡 No es necesario reescribir DNI ni Zonal.")
         
         elif detalle == "REFERIDO":
             n_ref = st.text_input("Nombre del Referido *").upper()
@@ -100,38 +101,37 @@ with tab1:
                 mail = st.text_input("Email *")
                 c_fe = st.text_input("Código FE (13 caracteres) *", max_chars=13)
 
-        # EL BOTÓN DEBE ESTAR ALINEADO CON LOS "IF" DE ARRIBA (DENTRO DEL FORM)
         submit = st.form_submit_button("💾 GUARDAR GESTIÓN", use_container_width=True)
 
         if submit:
             error = False
-            # 1. Validación de Acceso
+            # Validaciones de Seguridad y Acceso
             if nom_v == "N/A":
-                st.error("❌ DNI no reconocido en Estructura.")
+                st.error("❌ Acceso denegado: Ingrese su DNI en la barra lateral.")
                 error = True
             elif detalle == "SELECCIONA":
-                st.error("❌ Seleccione un tipo de gestión.")
+                st.error("❌ Debe seleccionar un tipo de gestión.")
                 error = True
             
-            # 2. Validaciones específicas para VENTA FIJA
-            elif detalle == "VENTA FIJA":
-                if not n_cl or not dir_ins or not mail:
-                    st.error("❌ Nombre, Dirección y Email son obligatorios.")
+            # Validación específica para VENTA FIJA / AGENDADO
+            elif detalle in ["VENTA FIJA", "CLIENTE AGENDADO"]:
+                if not n_cl.strip() or not dir_ins.strip() or not mail.strip():
+                    st.error("❌ Los campos Nombre, Dirección y Email no pueden estar vacíos.")
                     error = True
                 elif len(d_cl) != 8 or not d_cl.isdigit():
-                    st.error("❌ DNI Cliente debe tener 8 dígitos numéricos.")
+                    st.error("❌ El DNI debe ser de 8 dígitos numéricos.")
                     error = True
                 elif len(c1) != 9 or not c1.isdigit():
-                    st.error("❌ Celular debe tener 9 dígitos numéricos.")
+                    st.error("❌ El Celular debe ser de 9 dígitos numéricos (sin letras).")
                     error = True
                 elif len(n_ped) != 10 or not n_ped.isdigit():
-                    st.error("❌ El pedido debe tener 10 dígitos numéricos.")
+                    st.error("❌ El N° de Pedido debe tener 10 dígitos numéricos.")
                     error = True
                 elif len(c_fe) != 13:
-                    st.error("❌ El código FE debe tener 13 caracteres.")
+                    st.error("❌ El código FE debe tener exactamente 13 caracteres.")
                     error = True
                 elif t_op == "SELECCIONA" or prod == "SELECCIONA":
-                    st.error("❌ Debe seleccionar Operación y Producto.")
+                    st.error("❌ Seleccione Operación y Producto.")
                     error = True
 
             # 3. Validación NO-VENTA
@@ -236,6 +236,7 @@ with tab2:
             st.markdown("🎯 Mix de Gestión")
             fig_pie = px.pie(df_filtered, names="DETALLE", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(fig_pie, use_container_width=True)
+
 
 
 
