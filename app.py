@@ -49,12 +49,20 @@ df_maestro, df_registros = cargar_datos()
 if "form_key" not in st.session_state: st.session_state.form_key = 0
 
 # --- LOGO EN SIDEBAR ---
-try:
-    # Intenta cargar el archivo local que subiste a GitHub
-    st.sidebar.image("logo.png", use_container_width=True)
-except Exception:
-    # Si el archivo no existe o falla, no detiene la app
-    st.sidebar.warning("⚠️ No se encontró el archivo logo.png")
+import os
+
+ruta_logo = "logo.png"  # Asegúrate de que coincida exacto con el nombre en GitHub
+
+if os.path.exists(ruta_logo):
+    st.sidebar.image(ruta_logo, use_container_width=True)
+else:
+    # OPCIÓN DE RESPALDO: Si no lo encuentra local, intenta cargarlo de una URL
+    # Puedes subir tu logo a un sitio como postimages.org y pegar el link directo aquí
+    url_respaldo = "https://github.com/alvaroalpaca3/Gestion-Ventas/blob/main/logo.png" 
+    try:
+        st.sidebar.image(url_respaldo, use_container_width=True)
+    except:
+        st.sidebar.error("⚠️ No se encontró 'logo.png' en GitHub.")
 
 st.sidebar.title("👤 Acceso Vendedor")
 dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=8)
@@ -247,3 +255,21 @@ with tab2:
             st.caption("🟢 Los días donde se alcanzó la meta de 40 gestiones aparecen en verde.")
         else:
             st.info("No hay datos históricos para los filtros seleccionados.")
+
+
+# --- BOTÓN DE DESCARGA A EXCEL ---
+            import io
+            
+            # Convertimos el ranking a un archivo Excel en memoria
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                ranking_d.to_excel(writer, sheet_name='Ranking_Metas')
+            
+            st.download_button(
+                label="📥 Descargar Ranking Acumulado (Excel)",
+                data=buffer.getvalue(),
+                file_name=f"Ranking_Dimiare_{dia_sel.replace('/','-')}.xlsx",
+                mime="application/vnd.ms-excel",
+                use_container_width=True
+            )
+
