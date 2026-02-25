@@ -48,12 +48,13 @@ def cargar_datos():
 df_maestro, df_registros = cargar_datos()
 if "form_key" not in st.session_state: st.session_state.form_key = 0
 
-# --- SIDEBAR: ACCESO ---
-
 # --- LOGO EN SIDEBAR ---
-# Puedes usar un link directo a la imagen o la ruta de tu archivo
-st.image("logo.png")
-st.sidebar.image(url_logo, use_container_width=True)
+try:
+    # Intenta cargar el archivo local que subiste a GitHub
+    st.sidebar.image("logo.png", use_container_width=True)
+except Exception:
+    # Si el archivo no existe o falla, no detiene la app
+    st.sidebar.warning("⚠️ No se encontró el archivo logo.png")
 
 st.sidebar.title("👤 Acceso Vendedor")
 dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=8)
@@ -250,5 +251,6 @@ with tab2:
             st.markdown("📈 **Ritmo de Gestión**")
             df_ritmo = df_filtered.groupby("HORA").size().reset_index(name="Cantidad")
             st.plotly_chart(px.line(df_ritmo, x="HORA", y="Cantidad", markers=True), use_container_width=True)
+
 
 
