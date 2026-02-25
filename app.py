@@ -48,17 +48,18 @@ def cargar_datos():
 df_maestro, df_registros = cargar_datos()
 if "form_key" not in st.session_state: st.session_state.form_key = 0
 
-# --- LOGO EN SIDEBAR ---
+# --- LOGO SEGURO ---
 import os
 
-# Buscamos cualquier archivo que se llame logo (sin importar si es png, jpg o minúsculas)
-archivos_en_carpeta = os.listdir('.')
-logo_encontrado = [f for f in archivos_en_carpeta if f.lower().startswith('logo.')]
-
-if logo_encontrado:
-    st.sidebar.image(logo_encontrado[0], use_container_width=True)
+# Buscamos el archivo en el sistema
+if os.path.exists("logo.png"):
+    try:
+        # Usamos un contenedor para que si falla no rompa la app
+        st.sidebar.image("logo.png", use_container_width=True)
+    except:
+        st.sidebar.write("🖼️ **Dimiare**") # Texto de respaldo si la imagen falla
 else:
-    st.sidebar.info("⌛ Esperando archivo logo.png en GitHub...")
+    st.sidebar.write("🖼️ **Dimiare**")
 
 st.sidebar.title("👤 Acceso Vendedor")
     
@@ -269,6 +270,7 @@ with tab2:
                 mime="application/vnd.ms-excel",
                 use_container_width=True
             )
+
 
 
 
