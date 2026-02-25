@@ -69,12 +69,12 @@ st.header("📊SISTEMA DE GESTIÓN DIARIA")
 tab1, tab2 = st.tabs(["📝 REGISTRO", "📊 DASHBOARD"])
 
 with tab1:
-    st.subheader("📊 REGISTRO DE VENTAS")
+    st.markdown("#### 📝 REGISTRO DE VENTAS")
     
     detalle = st.selectbox("DETALLE DE GESTIÓN *", ["SELECCIONA", "VENTA FIJA", "NO-VENTA", "CLIENTE AGENDADO", "REFERIDO"])
     
     with st.form(key=f"f_{st.session_state.form_key}"):
-        # 22 Columnas inicializadas
+        # Inicialización de variables
         t_op = n_cl = d_cl = dir_ins = mail = c1 = c2 = prod = c_fe = n_ped = pil = m_nv = n_ref = c_ref = "N/A"
 
         if detalle == "NO-VENTA":
@@ -89,69 +89,56 @@ with tab1:
             ca, cb = st.columns(2)
             with ca:
                 n_cl = st.text_input("Nombre Cliente *").upper()
-                d_cl = st.text_input("DNI/RUC Cliente *")
-                t_op = st.selectbox("Operación *", ["CAPTACIÓN", "MIGRACIÓN", "ALTA"])
-                prod = st.selectbox("Producto *", ["BA", "DUO", "TRIO"])
+                d_cl = st.text_input("DNI/RUC Cliente (8 dígitos) *", max_chars=8)
+                t_op = st.selectbox("Operación *", ["SELECCIONA", "CAPTACIÓN", "MIGRACIÓN", "COMPLETA TV","COMPLETA BA", "COMPLETA MT"])
+                prod = st.selectbox("Producto *", ["SELECCIONA", "NAKED","DUO INT + TV", "DUO BA", "DUO TV", "TRIO"])
                 pil = st.radio("Piloto?", ["NO", "SI"], horizontal=True)
             with cb:
                 dir_ins = st.text_input("Dirección *").upper()
                 c1 = st.text_input("Celular 1 (9 dígitos) *", max_chars=9)
-                c2 = st.text_input("Celular 2")
-                n_ped = st.text_input("N° Pedido")
-                mail = st.text_input("Email")
-                c_fe = st.text_input("Código FE")
-               
+                n_ped = st.text_input("N° Pedido (10 dígitos) *", max_chars=10)
+                mail = st.text_input("Email *")
+                c_fe = st.text_input("Código FE (13 caracteres) *", max_chars=13)
 
-          if st.form_submit_button("💾 GUARDAR GESTIÓN", use_container_width=True):
+        # EL BOTÓN DEBE ESTAR ALINEADO CON LOS "IF" DE ARRIBA (DENTRO DEL FORM)
+        submit = st.form_submit_button("💾 GUARDAR GESTIÓN", use_container_width=True)
+
+        if submit:
             error = False
-            
             # 1. Validación de Acceso
             if nom_v == "N/A":
-                st.error("❌ DNI no reconocido. Verifique su acceso en la barra lateral.")
+                st.error("❌ DNI no reconocido en Estructura.")
                 error = True
-            
-            # 2. Validación de SELECCIONA
             elif detalle == "SELECCIONA":
                 st.error("❌ Seleccione un tipo de gestión.")
                 error = True
-
-            # 3. Validación de REFERIDO
-            elif detalle == "REFERIDO":
-                if len(c_ref) != 9 or not c_ref.isdigit():
-                    st.error("❌ El contacto del referido debe tener 9 dígitos numéricos.")
-                    error = True
-                elif not n_ref:
-                    st.error("❌ Debe ingresar el nombre del referido.")
-                    error = True
-
-            # 4. VALIDACIONES CRÍTICAS PARA VENTA FIJA Y AGENDADO
-            elif detalle in ["VENTA FIJA", "CLIENTE AGENDADO"]:
-                if not n_cl:
-                    st.error("❌ El nombre del cliente es obligatorio.")
+            
+            # 2. Validaciones específicas para VENTA FIJA
+            elif detalle == "VENTA FIJA":
+                if not n_cl or not dir_ins or not mail:
+                    st.error("❌ Nombre, Dirección y Email son obligatorios.")
                     error = True
                 elif len(d_cl) != 8 or not d_cl.isdigit():
-                    st.error("❌ El DNI del cliente debe tener exactamente 8 dígitos numéricos.")
+                    st.error("❌ DNI Cliente debe tener 8 dígitos numéricos.")
                     error = True
                 elif len(c1) != 9 or not c1.isdigit():
-                    st.error("❌ El Celular 1 debe tener exactamente 9 dígitos numéricos.")
-                    error = True
-                elif not dir_ins:
-                    st.error("❌ La dirección de instalación es obligatoria.")
-                    error = True
-                elif not mail or "@" not in mail:
-                    st.error("❌ Debe ingresar un correo electrónico válido.")
+                    st.error("❌ Celular debe tener 9 dígitos numéricos.")
                     error = True
                 elif len(n_ped) != 10 or not n_ped.isdigit():
-                    st.error("❌ El N° de Pedido debe tener exactamente 10 dígitos numéricos.")
+                    st.error("❌ El pedido debe tener 10 dígitos numéricos.")
                     error = True
                 elif len(c_fe) != 13:
-                    st.error("❌ El código FE debe tener exactamente 13 caracteres.")
+                    st.error("❌ El código FE debe tener 13 caracteres.")
                     error = True
-                elif t_op == "SELECCIONA" or prod == "SELECCIONA": # Asegúrate de añadir "SELECCIONA" a tus selectbox
+                elif t_op == "SELECCIONA" or prod == "SELECCIONA":
                     st.error("❌ Debe seleccionar Operación y Producto.")
                     error = True
 
-            # --- SI TODO ESTÁ CORRECTO, GUARDAR ---
+            # 3. Validación NO-VENTA
+            elif detalle == "NO-VENTA" and m_nv == "SELECCIONA":
+                st.error("❌ Debe seleccionar un motivo de No-Venta.")
+                error = True
+
             if not error:
                 try:
                     tz = pytz.timezone('America/Lima')
@@ -161,38 +148,17 @@ with tab1:
                     
                     fila = [
                         ahora.strftime("%d/%m/%Y %H:%M:%S"), zon_v, f"'{dni_clean}", nom_v, sup_v,
-                        detalle, t_op, n_cl, f"'{d_cl}", dir_ins, mail, f"'{c1}", f"'{c2}",
+                        detalle, t_op, n_cl, f"'{d_cl}", dir_ins, mail, f"'{c1}", "N/A",
                         prod, c_fe, f"'{n_ped}", pil, m_nv, n_ref, f"'{c_ref}",
                         f_actual, h_actual
                     ]
                     conectar_google().sheet1.append_row(fila, value_input_option='USER_ENTERED')
-                    st.success(f"✅ Venta registrada correctamente a las {h_actual} hs.")
+                    st.success(f"✅ ¡Guardado! (Hora: {h_actual})")
                     time.sleep(1)
                     st.session_state.form_key += 1
                     st.rerun()
-                except Exception as e: st.error(f"Error al guardar: {e}")
-
-            if not error:
-                try:
-                    tz = pytz.timezone('America/Lima')
-                    ahora = datetime.now(tz)
-                    
-                    # --- EXTRACCIÓN DE FECHA Y HORA SIMPLIFICADA ---
-                    f_actual = ahora.strftime("%d/%m/%Y")
-                    h_actual = ahora.strftime("%H") # Solo la hora (00-23)
-                    
-                    fila = [
-                        ahora.strftime("%d/%m/%Y %H:%M:%S"), zon_v, f"'{dni_clean}", nom_v, sup_v,
-                        detalle, t_op, n_cl, f"'{d_cl}", dir_ins, mail, f"'{c1}", f"'{c2}",
-                        prod, c_fe, f"'{n_ped}", pil, m_nv, n_ref, f"'{c_ref}",
-                        f_actual, h_actual # Columnas 21 y 22: Fecha y Solo Hora
-                    ]
-                    conectar_google().sheet1.append_row(fila, value_input_option='USER_ENTERED')
-                    st.success("✅ ¡Registro exitoso!")
-                    time.sleep(1)
-                    st.session_state.form_key += 1
-                    st.rerun()
-                except Exception as e: st.error(f"Error al guardar: {e}")
+                except Exception as e:
+                    st.error(f"Error al guardar: {e}")
 
 
 with tab2:
@@ -270,6 +236,7 @@ with tab2:
             st.markdown("🎯 Mix de Gestión")
             fig_pie = px.pie(df_filtered, names="DETALLE", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(fig_pie, use_container_width=True)
+
 
 
 
