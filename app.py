@@ -195,6 +195,36 @@ with tab2:
 
         st.divider()
 
+        # --- RANKING DE VENDEDORES POR HORA ---
+        st.divider()
+        st.markdown("⏰ **Control de Actividad por Horas**")
+        
+        if "HORA" in df_filtered.columns and "NOMBRE VENDEDOR" in df_filtered.columns:
+            # Creamos la tabla pivote: Filas (Vendedores) vs Columnas (Horas)
+            ranking_hora = df_filtered.pivot_table(
+                index="NOMBRE VENDEDOR", 
+                columns="HORA", 
+                values="DETALLE", 
+                aggfunc="count", 
+                fill_value=0
+            )
+            
+            # Ordenar las columnas (horas) para que aparezcan de 08, 09, 10...
+            ranking_hora = ranking_hora.reindex(sorted(ranking_hora.columns), axis=1)
+            
+            # Añadir un total por vendedor para saber quién trabajó más en el rango filtrado
+            ranking_hora["TOTAL GESTIONES"] = ranking_hora.sum(axis=1)
+            ranking_hora = ranking_hora.sort_values(by="TOTAL GESTIONES", ascending=False)
+
+            # Estilo: Resaltar celdas con actividad para que sea fácil de leer
+            def color_actividad(val):
+                if isinstance(val, int) and val > 0:
+                    return 'background-color: #E1F5FE; color: #01579B;' # Azul claro si trabajó esa hora
+                return ''
+
+            st.dataframe(ranking_hora.style.applymap(color_actividad), use_container_width=True)
+            st.caption("💡 Esta tabla muestra cuántas gestiones (Ventas, No-Ventas, etc.) hizo cada uno en cada hora específica.")
+            
         # --- RANKING CON SEMÁFORO (40 REGISTROS = VERDE) ---
         st.markdown("🏆 Ranking de Productividad Diaria")
         
@@ -236,6 +266,7 @@ with tab2:
             st.markdown("🎯 Mix de Gestión")
             fig_pie = px.pie(df_filtered, names="DETALLE", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(fig_pie, use_container_width=True)
+
 
 
 
