@@ -166,83 +166,82 @@ with tab2:
     if df_registros.empty:
         st.info("Aún no hay datos registrados.")
     else:
-        # --- FILTROS DE BÚSQUEDA ---
-        st.markdown("🔍 **Filtros de Control**")
+        # --- FILTROS ---
+        st.markdown("🔍 **Configuración de Vista**")
         col_f1, col_f2, col_f3 = st.columns(3)
         
         with col_f1:
-            # Filtro por Día: Muestra solo los días que tienen registros
+            # Este filtro SOLO afectará al Ranking por Horas
             dias_unicos = sorted(df_registros["FECHA"].unique().tolist(), reverse=True)
-            dia_sel = st.selectbox("📅 Seleccionar Día", dias_unicos)
-            df_dia = df_registros[df_registros["FECHA"] == dia_sel]
-
+            dia_sel = st.selectbox("📅 Día para Control Horario", dias_unicos)
+        
         with col_f2:
-            zonales = ["TODOS"] + sorted(df_dia["ZONAL"].unique().tolist())
-            zonal_sel = st.selectbox("Zonal", zonales)
+            # Filtro de Zonal (Afecta al Ranking Acumulado)
+            zonales = ["TODOS"] + sorted(df_registros["ZONAL"].unique().tolist())
+            zonal_sel = st.selectbox("Zonal (Acumulado)", zonales)
             
         with col_f3:
-            df_temp = df_dia if zonal_sel == "TODOS" else df_dia[df_dia["ZONAL"] == zonal_sel]
+            # Filtro de Supervisor (Afecta al Ranking Acumulado)
+            df_temp = df_registros if zonal_sel == "TODOS" else df_registros[df_registros["ZONAL"] == zonal_sel]
             supervisores = ["TODOS"] + sorted(df_temp["SUPERVISOR"].unique().tolist())
-            sup_sel = st.selectbox("Supervisor", supervisores)
+            sup_sel = st.selectbox("Supervisor (Acumulado)", supervisores)
 
-        # Filtro final aplicado
-        df_filtered = df_dia.copy()
-        if zonal_sel != "TODOS": df_filtered = df_filtered[df_filtered["ZONAL"] == zonal_sel]
-        if sup_sel != "TODOS": df_filtered = df_filtered[df_filtered["SUPERVISOR"] == sup_sel]
-
-        # --- RANKING DE VENDEDORES POR HORA (ELIMINA ACUMULADOS) ---
+        # --- SECCIÓN 1: CONTROL POR HORAS (FILTRADO POR DÍA) ---
         st.divider()
-        st.markdown(f"⏰ **Actividad por Horas - Día: {dia_sel}**")
+        st.markdown(f"⏰ **Monitor de Actividad en Tiempo Real (Día: {dia_sel})**")
         
-        if not df_filtered.empty and "HORA" in df_filtered.columns:
-            ranking_hora = df_filtered.pivot_table(
+        # Filtramos solo por el día seleccionado para este cuadro
+        df_solo_dia = df_registros[df_registros["FECHA"] == dia_sel]
+        
+        if not df_solo_dia.empty:
+            ranking_hora = df_solo_dia.pivot_table(
                 index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", 
                 aggfunc="count", fill_value=0
             )
             ranking_hora = ranking_hora.reindex(sorted(ranking_hora.columns), axis=1)
             ranking_hora["TOTAL"] = ranking_hora.sum(axis=1)
-            ranking_hora = ranking_hora.sort_values(by="TOTAL", ascending=False)
-
+            
             def color_horas(val):
-                if val == 0: return 'background-color: #F0F2F6; color: #A0A0A0;' # Gris huecos
-                return 'background-color: #E1F5FE; color: #01579B; font-weight: bold;' # Azul activo
+                if val == 0: return 'background-color: #F0F2F6; color: #A0A0A0;'
+                return 'background-color: #E1F5FE; color: #01579B; font-weight: bold;'
             
             st.dataframe(ranking_hora.style.applymap(color_horas), use_container_width=True)
         else:
-            st.warning("No hay datos para esta combinación de filtros.")
+            st.warning("No hay datos para el día seleccionado.")
 
-        # --- RANKING DE METAS (SOLUCIÓN AL ERROR TYPEERROR) ---
+        # --- SECCIÓN 2: RANKING ACUMULADO POR DÍAS (FILTRADO POR ZONAL/SUP) ---
         st.divider()
-        st.markdown("🏆 **Resumen de Metas (Meta: 40 Registros)**")
+        st.markdown("🏆 **Productividad Acumulada (Día Cerrado / Histórico)**")
         
-        resumen_meta = df_filtered.groupby("NOMBRE VENDEDOR").size().reset_index(name="TOTAL DÍA")
-        resumen_meta = resumen_meta.sort_values(by="TOTAL DÍA", ascending=False)
+        # Aplicamos filtros de Zonal y Supervisor al DataFrame COMPLETO (todos los días)
+        df_acumulado = df_registros.copy()
+        if zonal_sel != "TODOS": df_acumulado = df_acumulado[df_acumulado["ZONAL"] == zonal_sel]
+        if sup_sel != "TODOS": df_acumulado = df_acumulado[df_acumulado["SUPERVISOR"] == sup_sel]
 
-        if not resumen_meta.empty:
+        if not df_acumulado.empty:
+            # Pivotamos por NOMBRE vs FECHA para ver la evolución
+            ranking_dias = df_acumulado.pivot_table(
+                index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", 
+                aggfunc="count", fill_value=0
+            )
+            
+            # Reordenar columnas de fecha y añadir Total General
+            ranking_dias = ranking_dias.reindex(sorted(ranking_dias.columns, reverse=True), axis=1)
+            ranking_dias["TOTAL PERIODO"] = ranking_dias.sum(axis=1)
+            ranking_dias = ranking_dias.sort_values(by="TOTAL PERIODO", ascending=False)
+
             def color_semaforo(val):
-                # Validamos que el valor sea numérico antes de comparar
                 try:
-                    if float(val) >= 40:
-                        return 'background-color: #90EE90; font-weight: bold;'
+                    if float(val) >= 40: return 'background-color: #90EE90; font-weight: bold;'
                 except: pass
                 return ''
 
-            # Aplicamos el estilo solo a la columna TOTAL DÍA para evitar errores de tipo
-            st.dataframe(
-                resumen_meta.style.applymap(color_semaforo, subset=['TOTAL DÍA']), 
-                use_container_width=True, 
-                hide_index=True
-            )
+            # Mostramos el histórico con el semáforo de 40 registros
+            st.dataframe(ranking_dias.style.applymap(color_semaforo), use_container_width=True)
+            st.caption("🟢 Celdas en verde: Meta de 40 alcanzada en ese día específico.")
         else:
-            st.info("Sin datos para el ranking de metas.")
-
-        # --- GRÁFICOS INFERIORES ---
-        st.divider()
-        col_g1, col_g2 = st.columns(2)
-        with col_g1:
-            st.markdown("🎯 **Mix de Gestión**")
-            st.plotly_chart(px.pie(df_filtered, names="DETALLE", hole=0.4), use_container_width=True)
-        with col_g2:
+            st.info("Aplica filtros para ver el ranking acumulado.")
             st.markdown("📈 **Ritmo de Gestión**")
             df_ritmo = df_filtered.groupby("HORA").size().reset_index(name="Cantidad")
             st.plotly_chart(px.line(df_ritmo, x="HORA", y="Cantidad", markers=True), use_container_width=True)
+
