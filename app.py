@@ -49,24 +49,19 @@ df_maestro, df_registros = cargar_datos()
 if "form_key" not in st.session_state: st.session_state.form_key = 0
 
 # --- LOGO EN SIDEBAR ---
-# --- LOGO EN SIDEBAR (SECCIÓN CORREGIDA) ---
 import os
 
-ruta_logo = "logo.png"
+# Buscamos cualquier archivo que se llame logo (sin importar si es png, jpg o minúsculas)
+archivos_en_carpeta = os.listdir('.')
+logo_encontrado = [f for f in archivos_en_carpeta if f.lower().startswith('logo.')]
 
-# Verificamos si el archivo existe físicamente en el servidor
-if os.path.exists(ruta_logo):
-    try:
-        st.sidebar.image(ruta_logo, use_container_width=True)
-    except Exception:
-        # Si hay un error de formato de imagen, muestra un espacio en blanco
-        st.sidebar.write("") 
+if logo_encontrado:
+    st.sidebar.image(logo_encontrado[0], use_container_width=True)
 else:
-    # Si aún no se sincroniza en GitHub, muestra un mensaje amigable
-    st.sidebar.info("⌛ Sincronizando logo...")
-    
+    st.sidebar.info("⌛ Esperando archivo logo.png en GitHub...")
 
 st.sidebar.title("👤 Acceso Vendedor")
+    
 dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=8)
 dni_clean = "".join(filter(str.isdigit, dni_input)).zfill(8)
 
@@ -274,5 +269,6 @@ with tab2:
                 mime="application/vnd.ms-excel",
                 use_container_width=True
             )
+
 
 
