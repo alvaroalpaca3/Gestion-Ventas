@@ -102,7 +102,7 @@ with tab1:
                 c_fe = st.text_input("Código FE")
                
 
-      if st.form_submit_button("💾 GUARDAR GESTIÓN", use_container_width=True):
+          if st.form_submit_button("💾 GUARDAR GESTIÓN", use_container_width=True):
             error = False
             
             # 1. Validación de Acceso
@@ -270,6 +270,7 @@ with tab2:
             st.markdown("🎯 Mix de Gestión")
             fig_pie = px.pie(df_filtered, names="DETALLE", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(fig_pie, use_container_width=True)
+
 
 
 
