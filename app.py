@@ -49,6 +49,12 @@ df_maestro, df_registros = cargar_datos()
 if "form_key" not in st.session_state: st.session_state.form_key = 0
 
 # --- SIDEBAR: ACCESO ---
+
+# --- LOGO EN SIDEBAR ---
+# Puedes usar un link directo a la imagen o la ruta de tu archivo
+st.image("logo.png")
+st.sidebar.image(url_logo, use_container_width=True)
+
 st.sidebar.title("👤 Acceso Vendedor")
 dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=8)
 dni_clean = "".join(filter(str.isdigit, dni_input)).zfill(8)
@@ -244,4 +250,5 @@ with tab2:
             st.markdown("📈 **Ritmo de Gestión**")
             df_ritmo = df_filtered.groupby("HORA").size().reset_index(name="Cantidad")
             st.plotly_chart(px.line(df_ritmo, x="HORA", y="Cantidad", markers=True), use_container_width=True)
+
 
