@@ -49,20 +49,22 @@ df_maestro, df_registros = cargar_datos()
 if "form_key" not in st.session_state: st.session_state.form_key = 0
 
 # --- LOGO EN SIDEBAR ---
+# --- LOGO EN SIDEBAR (SECCIÓN CORREGIDA) ---
 import os
 
-ruta_logo = "logo.png"  # Asegúrate de que coincida exacto con el nombre en GitHub
+ruta_logo = "logo.png"
 
+# Verificamos si el archivo existe físicamente en el servidor
 if os.path.exists(ruta_logo):
-    st.sidebar.image(ruta_logo, use_container_width=True)
-else:
-    # OPCIÓN DE RESPALDO: Si no lo encuentra local, intenta cargarlo de una URL
-    # Puedes subir tu logo a un sitio como postimages.org y pegar el link directo aquí
-    url_respaldo = "https://github.com/alvaroalpaca3/Gestion-Ventas/blob/main/logo.png" 
     try:
-        st.sidebar.image(url_respaldo, use_container_width=True)
-    except:
-        st.sidebar.error("⚠️ No se encontró 'logo.png' en GitHub.")
+        st.sidebar.image(ruta_logo, use_container_width=True)
+    except Exception:
+        # Si hay un error de formato de imagen, muestra un espacio en blanco
+        st.sidebar.write("") 
+else:
+    # Si aún no se sincroniza en GitHub, muestra un mensaje amigable
+    st.sidebar.info("⌛ Sincronizando logo...")
+    
 
 st.sidebar.title("👤 Acceso Vendedor")
 dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=8)
@@ -272,4 +274,5 @@ with tab2:
                 mime="application/vnd.ms-excel",
                 use_container_width=True
             )
+
 
