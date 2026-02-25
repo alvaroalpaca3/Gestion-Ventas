@@ -121,11 +121,16 @@ with tab1:
                 try:
                     tz = pytz.timezone('America/Lima')
                     ahora = datetime.now(tz)
+                    
+                    # --- EXTRACCIÓN DE FECHA Y HORA SIMPLIFICADA ---
+                    f_actual = ahora.strftime("%d/%m/%Y")
+                    h_actual = ahora.strftime("%H") # Solo la hora (00-23)
+                    
                     fila = [
                         ahora.strftime("%d/%m/%Y %H:%M:%S"), zon_v, f"'{dni_clean}", nom_v, sup_v,
                         detalle, t_op, n_cl, f"'{d_cl}", dir_ins, mail, f"'{c1}", f"'{c2}",
                         prod, c_fe, f"'{n_ped}", pil, m_nv, n_ref, f"'{c_ref}",
-                        ahora.strftime("%d/%m/%Y"), hora_hoy = datetime.now().strftime("%H")
+                        f_actual, h_actual # Columnas 21 y 22: Fecha y Solo Hora
                     ]
                     conectar_google().sheet1.append_row(fila, value_input_option='USER_ENTERED')
                     st.success("✅ ¡Registro exitoso!")
@@ -210,6 +215,7 @@ with tab2:
             st.markdown("🎯 Mix de Gestión")
             fig_pie = px.pie(df_filtered, names="DETALLE", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(fig_pie, use_container_width=True)
+
 
 
 
