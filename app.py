@@ -243,4 +243,3 @@ with tab2:
             st.markdown("📈 Curva de Productividad")
             df_curva = df_filtered.groupby("HORA").size().reset_index(name="Cantidad")
             st.plotly_chart(px.line(df_curva, x="HORA", y="Cantidad", markers=True), use_container_width=True)
-
