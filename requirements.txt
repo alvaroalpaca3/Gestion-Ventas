@@ -5,3 +5,4 @@ oauth2client
 pytz
 plotly
 altair==4.2.2
+jinja2
