@@ -280,21 +280,22 @@ with tab2:
                                file_name=f"Metas_Vendedores.xlsx", use_container_width=True)
 
 
-           # --- SECCIÓN 3: COMPOSICIÓN DE GESTIONES (GRÁFICA DE DONA) ---
+# --- SECCIÓN 3: COMPOSICIÓN DE GESTIONES (GRÁFICA DE DONA) ---
             st.divider()
-            st.markdown(f"📊 **Composición de Gestiones ({zonal_sel} - {sup_sel})**")
+            st.markdown(f"📊 **Resumen de Gestiones ({zonal_sel} - {sup_sel})**")
 
             if not df_final.empty:
-                # 1. Limpieza total de los datos antes de contar
+                # 1. LIMPIEZA MAESTRA: Quitamos espacios y pasamos todo a MAYÚSCULAS
                 df_temp_graf = df_final.copy()
                 df_temp_graf['DETALLE'] = df_temp_graf['DETALLE'].astype(str).str.strip().str.upper()
 
-                # 2. Conteo agrupado (Aquí es donde los 1 se convertirán en el total real)
+                # 2. AGRUPACIÓN REAL: Contamos cuántas veces aparece cada gestión
+                # Esto es lo que convertirá tus ocho "1" en un solo "8"
                 df_donut = df_temp_graf['DETALLE'].value_counts().reset_index()
                 df_donut.columns = ['Gestión', 'Total']
                 
-                # 3. Suma total basada EXCLUSIVAMENTE en lo que hay en la gráfica
-                suma_circulo = int(df_donut['Total'].sum())
+                # 3. Suma total para el centro del círculo
+                suma_total_grafica = int(df_donut['Total'].sum())
 
                 import plotly.express as px
                 
@@ -315,15 +316,15 @@ with tab2:
                     marker=dict(line=dict(color='#FFFFFF', width=2))
                 )
 
-                # 6. Texto Central (Usamos color hexadecimal directo para evitar el NameError)
+                # 6. Texto Central (Azul oscuro directo para evitar errores de variable)
                 fig_dona.add_annotation(
-                    text=f"TOTAL<br><b>{suma_circulo}</b>",
+                    text=f"TOTAL<br><b>{suma_total_grafica}</b>",
                     showarrow=False,
                     font=dict(size=22, color='#004085'),
                     x=0.5, y=0.5
                 )
 
-                # 7. Layout y Leyenda
+                # 7. Ajustes de diseño y leyenda
                 fig_dona.update_layout(
                     showlegend=True,
                     legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
@@ -335,4 +336,5 @@ with tab2:
                 st.plotly_chart(fig_dona, use_container_width=True)
                 
             else:
-                st.warning("No hay datos registrados para los filtros seleccionados.")
+                st.warning("No hay datos registrados con los filtros actuales.")
+
