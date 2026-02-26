@@ -51,7 +51,6 @@ if "form_key" not in st.session_state: st.session_state.form_key = 0
 # --- 4. BARRA LATERAL ---
 
 st.sidebar.title("DIAMIRE")
-st.sidebar.caption("DIMIARE")
 
 st.sidebar.title("👤 Acceso Vendedor")
 dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=8)
@@ -66,8 +65,8 @@ if not vendedor.empty and len(dni_input) == 8:
     st.sidebar.success(f"Bienvenido: {nom_v}")
 else:
     nom_v = sup_v = zon_v = "N/A"
-
-st.sidebar.tabs("©2026 Todos los derechos reservados by Alvaro Alpaca")
+    
+st.sidebar.caption("©2026 Todos los derechos reservados by Alvaro Alpaca")
 
 # --- 5. CUERPO PRINCIPAL ---
 st.header("📊 REGISTRO DE GESTIÓN DIARIA")
@@ -208,6 +207,7 @@ with tab2:
                      .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
 
         
+
 
 
 
