@@ -192,14 +192,10 @@ with tab2:
             supervisores = ["TODOS"] + sorted(df_t["SUPERVISOR"].unique().tolist())
             sup_sel = st.selectbox("Supervisor (Histórico)", supervisores)
 
-        # CSS PARA CENTRAR CABECERAS Y CELDAS
-        st.markdown("""
-            <style>
-                th {text-align: center !important;}
-                td {text-align: center !important;}
-            </style>
-        """, unsafe_allow_html=True)
-
+        # Definición de Estilos Comunes para Simetría
+        # Celeste claro para totales: #CCE5FF
+        estilo_celeste = 'background-color: #CCE5FF; color: #004085; font-weight: bold; text-align: center;'
+        
         # --- SECCIÓN 1: MONITOR HORARIO ---
         st.divider()
         st.markdown(f"⏰ **Actividad por Horas ({dia_sel})**")
@@ -210,14 +206,14 @@ with tab2:
             ranking_h["TOTAL"] = ranking_h.sum(axis=1)
             ranking_h = ranking_h.sort_values(by="TOTAL", ascending=False)
             
-            # Centrado de contenido y cabeceras
+            # Forzamos centrado en cabeceras (th) y celdas (td)
             st.dataframe(
                 ranking_h.style.set_properties(**{
                     'text-align': 'center',
                     'vertical-align': 'middle'
                 }).set_table_styles([
                     {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#F0F2F6')]}
-                ]).set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}),
+                ]).set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'color': '#004085', 'font-weight': 'bold'}),
                 use_container_width=True
             )
 
@@ -236,41 +232,32 @@ with tab2:
             ranking_d["TOTAL ACUMULADO"] = ranking_d.sum(axis=1)
             ranking_d = ranking_d.sort_values(by="TOTAL ACUMULADO", ascending=False)
 
-            def style_winner(val):
+            # Función para meta >= 40 (Verde) y centrado para los demás
+            def style_metas_y_centrado(val):
                 try:
-                    if float(val) >= 40: return 'background-color: #90EE90; color: #004D00; font-weight: bold;'
+                    if float(val) >= 40: 
+                        return 'background-color: #90EE90; color: #004D00; font-weight: bold; text-align: center;'
                 except: pass
-                return ''
+                return 'text-align: center;'
 
-            # Centrado y Estilos de color
             st.dataframe(
                 ranking_d.style.set_properties(**{
                     'text-align': 'center',
                     'vertical-align': 'middle'
                 }).set_table_styles([
                     {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#F0F2F6')]}
-                ]).applymap(style_winner, subset=cols_fechas)
-                .set_properties(subset=['TOTAL ACUMULADO'], **{'background-color': '#1E90FF', 'color': 'white', 'font-weight': 'bold'})
+                ]).applymap(style_metas_y_centrado, subset=cols_fechas)
+                .set_properties(subset=['TOTAL ACUMULADO'], **{'background-color': '#CCE5FF', 'color': '#004085', 'font-weight': 'bold'})
                 , use_container_width=True
             )
 
-            # --- BOTÓN EXCEL (Requiere xlsxwriter en requirements.txt) ---
+            # --- BOTÓN EXCEL ---
             import io
             try:
                 buffer = io.BytesIO()
                 with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
                     ranking_d.to_excel(writer, sheet_name='Ranking_Metas')
-                
-                st.download_button(
-                    label="📥 Descargar Reporte a Excel",
-                    data=buffer.getvalue(),
-                    file_name=f"Metas_Vendedores.xlsx",
-                    mime="application/vnd.ms-excel",
-                    use_container_width=True
-                )
-            except Exception as e:
-                st.error(f"Error al generar Excel: Asegúrate de tener 'xlsxwriter' instalado.")
-
-
-
-
+                st.download_button("📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
+                                   file_name=f"Metas_{zonal_sel}.xlsx", use_container_width=True)
+            except:
+                st.warning("Asegúrate de tener 'xlsxwriter' en requirements.txt")
