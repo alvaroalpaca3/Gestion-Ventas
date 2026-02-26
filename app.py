@@ -339,8 +339,3 @@ with tab2:
 
             else:
                 st.warning("No hay datos para generar la matriz con los filtros actuales.")
-
-            else:
-                st.warning("No hay datos para generar la matriz con los filtros actuales.")
-
-
