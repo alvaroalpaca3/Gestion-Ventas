@@ -279,60 +279,63 @@ with tab2:
             st.download_button("📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
                                file_name=f"Metas_Vendedores.xlsx", use_container_width=True)
 
-# --- SECCIÓN 3: RESUMEN DE GESTIONES POR TIPO ---
+# --- SECCIÓN 3: COMPOSICIÓN DE GESTIONES ---
             st.divider()
-            st.markdown(f"📋 **Resumen Consolidado ({zonal_sel} - {sup_sel})**")
+            st.markdown(f"📊 **Distribución de Gestiones ({zonal_sel} - {sup_sel})**")
 
             if not df_final.empty:
-                # 1. Calculamos el conteo manual para asegurar que NO salgan "1 uds"
-                # Limpiamos y agrupamos
+                # 1. CREAMOS LA TABLA RESUMEN PRIMERO (La fuente de la verdad)
                 df_counts = df_final.copy()
                 df_counts['DETALLE'] = df_counts['DETALLE'].astype(str).str.strip().str.upper()
                 
-                # Creamos la tabla de resumen
-                resumen_tipo = df_counts['DETALLE'].value_counts().reset_index()
-                resumen_tipo.columns = ['TIPO DE GESTIÓN', 'CANTIDAD']
+                # Agrupamos y contamos
+                resumen_grafico = df_counts['DETALLE'].value_counts().reset_index()
+                resumen_grafico.columns = ['TIPO', 'CANTIDAD']
                 
-                # Añadimos columna de porcentaje para que sea más visual
-                total_g = resumen_tipo['CANTIDAD'].sum()
-                resumen_tipo['%'] = ((resumen_tipo['CANTIDAD'] / total_g) * 100).map('{:,.1f}%'.format)
+                # FORZAMOS QUE LA CANTIDAD SEA NÚMERO ENTERO
+                resumen_grafico['CANTIDAD'] = pd.to_numeric(resumen_grafico['CANTIDAD'])
+                total_g = int(resumen_grafico['CANTIDAD'].sum())
 
-                # 2. Mostramos la TABLA DE RESUMEN (Centrada y Estilizada)
-                st.dataframe(
-                    resumen_tipo.style.set_properties(**{'text-align': 'center'})
-                    .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}])
-                    .set_properties(subset=['CANTIDAD'], **{'background-color': '#E1F5FE', 'font-weight': 'bold'}),
-                    use_container_width=True,
-                    hide_index=True
-                )
-
-                # 3. Gráfico de Barras Simple (Mucho más estable que la dona)
                 import plotly.express as px
                 
-                fig_barras = px.bar(
-                    resumen_tipo,
-                    x='CANTIDAD',
-                    y='TIPO DE GESTIÓN',
-                    orientation='h',
-                    text='CANTIDAD',
-                    color='TIPO DE GESTIÓN',
-                    color_discrete_sequence=['#004085', '#2E7D32', '#F9A825', '#C62828'],
+                # 2. GENERAMOS LA DONA DESDE EL RESUMEN
+                fig_dona = px.pie(
+                    resumen_grafico, 
+                    values='CANTIDAD', 
+                    names='TIPO', 
+                    hole=0.5,
+                    color_discrete_sequence=px.colors.qualitative.Pastel,
                     template='plotly_white'
                 )
 
-                fig_barras.update_traces(textposition='outside')
-                fig_barras.update_layout(
-                    showlegend=False,
-                    height=300,
-                    xaxis_title="Total de Gestiones",
-                    yaxis_title=None,
-                    margin=dict(l=20, r=20, t=10, b=10)
+                # 3. CONFIGURACIÓN DE ETIQUETAS (Sin decimales extraños)
+                fig_dona.update_traces(
+                    texttemplate='<b>%{label}</b><br>%{value} uds.<br>%{percent}',
+                    textposition='outside',
+                    marker=dict(line=dict(color='#FFFFFF', width=2))
                 )
 
-                st.plotly_chart(fig_barras, use_container_width=True)
+                # 4. TOTAL EN EL CENTRO
+                fig_dona.add_annotation(
+                    text=f"TOTAL<br><b>{total_g}</b>",
+                    showarrow=False,
+                    font=dict(size=22, color='#004085'),
+                    x=0.5, y=0.5
+                )
 
-                # 4. Métrica destacada del Total
-                st.metric("Total General de Gestiones", f"{total_g} uds.")
+                # 5. AJUSTES DE DISEÑO
+                fig_dona.update_layout(
+                    showlegend=True,
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
+                    height=500,
+                    margin=dict(l=50, r=50, t=30, b=100)
+                )
+
+                # 6. RENDERIZADO
+                st.plotly_chart(fig_dona, use_container_width=True)
+
+                # 7. MENSAJE DE APOYO
+                st.info(f"💡 Esta gráfica resume las {total_g} gestiones realizadas bajo los filtros seleccionados.")
 
             else:
                 st.warning("No hay datos para mostrar con los filtros actuales.")
