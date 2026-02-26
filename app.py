@@ -51,10 +51,14 @@ df_maestro, df_registros = cargar_datos()
 if "form_key" not in st.session_state: st.session_state.form_key = 0
 
 # --- 4. BARRA LATERAL (LOGIN Y ACCESO) ---
-if os.path.exists("logo.png"):
-    st.sidebar.image("logo.png", use_container_width=True)
-else:
-    st.sidebar.write("🖼️ **DIMIARE**")
+# Corrección de error en línea 55: Validación de imagen segura
+try:
+    if os.path.exists("logo.png"):
+        st.sidebar.image("logo.png", use_container_width=True)
+    else:
+        st.sidebar.title("🖼️ DIMIARE")
+except:
+    st.sidebar.title("🖼️ DIMIARE")
 
 st.sidebar.title("👤 Acceso Vendedor")
 dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=8)
@@ -74,18 +78,17 @@ else:
 st.header("📊 REGISTRO DE GESTIÓN DIARIA")
 tab1, tab2 = st.tabs(["📝 REGISTRO", "📊 DASHBOARD"])
 
-# --- PESTAÑA 1: REGISTRO (CON TODAS LAS VALIDACIONES) ---
+# --- PESTAÑA 1: REGISTRO ---
 with tab1:
     st.markdown("#### 📝 INGRESO DE DATOS")
     detalle = st.selectbox("DETALLE DE GESTIÓN *", ["SELECCIONA", "VENTA FIJA", "NO-VENTA", "CLIENTE AGENDADO", "REFERIDO"])
     
     with st.form(key=f"registro_form_{st.session_state.form_key}"):
-        # Inicialización de campos
         t_op = n_cl = d_cl = dir_ins = mail = c1 = prod = c_fe = n_ped = pil = m_nv = n_ref = c_ref = "N/A"
 
         if detalle == "NO-VENTA":
             m_nv = st.selectbox("MOTIVO DE NO VENTA *", ["SELECCIONA", "COMPETENCIA", "MALA EXPERIENCIA", "CARGO ALTO", "SIN COBERTURA", "YA TIENE SERVICIO"])
-            st.info("💡 Instrucción: Solo debe llenar el motivo. Su DNI y Zonal se guardan automáticamente.")
+            st.info("💡 No debe reescribir DNI ni Zonal. Solo llene el motivo.")
         
         elif detalle == "REFERIDO":
             n_ref = st.text_input("Nombre del Referido *").upper()
@@ -110,42 +113,19 @@ with tab1:
 
         if submit:
             error = False
-            # Validaciones de Seguridad
             if nom_v == "N/A":
-                st.error("❌ Error: Debe ingresar un DNI válido en la barra lateral.")
+                st.error("❌ DNI de vendedor no válido.")
                 error = True
             elif detalle == "SELECCIONA":
-                st.error("❌ Error: Seleccione un tipo de gestión.")
+                st.error("❌ Elija un tipo de gestión.")
                 error = True
-            
-            # Validación VENTA FIJA / AGENDADO
             elif detalle in ["VENTA FIJA", "CLIENTE AGENDADO"]:
                 if any(x == "SELECCIONA" or not str(x).strip() for x in [n_cl, d_cl, dir_ins, c1, n_ped, mail, c_fe, t_op, prod]):
-                    st.error("❌ Error: Todos los campos con (*) son obligatorios.")
+                    st.error("❌ Complete todos los campos marcados con (*).")
                     error = True
-                elif len(d_cl) < 8:
-                    st.error("❌ Error: El DNI/RUC debe tener al menos 8 dígitos.")
+                elif len(d_cl) < 8 or len(c1) != 9 or len(n_ped) != 10 or len(c_fe) != 13:
+                    st.error("❌ Verifique la longitud de DNI, Celular, Pedido o FE.")
                     error = True
-                elif len(c1) != 9:
-                    st.error("❌ Error: El celular debe tener 9 dígitos.")
-                    error = True
-                elif len(n_ped) != 10:
-                    st.error("❌ Error: El número de pedido debe tener 10 dígitos.")
-                    error = True
-                elif len(c_fe) != 13:
-                    st.error("❌ Error: El código FE debe tener 13 caracteres.")
-                    error = True
-
-            # Validación REFERIDO
-            elif detalle == "REFERIDO":
-                if not n_ref.strip() or len(c_ref) != 9:
-                    st.error("❌ Error: Ingrese Nombre y Celular (9 dígitos) del referido.")
-                    error = True
-
-            # Validación NO-VENTA
-            elif detalle == "NO-VENTA" and m_nv == "SELECCIONA":
-                st.error("❌ Error: Seleccione el motivo de la no-venta.")
-                error = True
 
             if not error:
                 try:
@@ -158,101 +138,71 @@ with tab1:
                         ahora.strftime("%d/%m/%Y"), ahora.strftime("%H")
                     ]
                     conectar_google().sheet1.append_row(fila, value_input_option='USER_ENTERED')
-                    
-                    # --- REFRESCO INSTANTÁNEO ---
                     st.cache_data.clear()
-                    st.success("✅ Gestión guardada exitosamente.")
+                    st.success("✅ ¡Guardado!")
                     time.sleep(1)
                     st.session_state.form_key += 1
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Error al guardar en base de datos: {e}")
+                    st.error(f"Error: {e}")
 
-# --- PESTAÑA 2: DASHBOARD (TODO EN UNO) ---
+# --- PESTAÑA 2: DASHBOARD ---
 with tab2:
     if df_registros.empty:
-        st.info("No hay datos registrados aún.")
+        st.info("No hay datos.")
     else:
-        # Limpieza de datos
         df_registros['DETALLE'] = df_registros['DETALLE'].astype(str).str.strip().str.upper()
 
-        # Filtros Superiores
-        f1, f2, f3 = st.columns(3)
-        with f1:
-            dia_sel = st.selectbox("📅 Día Control Horario", sorted(df_registros["FECHA"].unique(), reverse=True))
-        with f2:
+        # Filtros
+        c1, c2, c3 = st.columns(3)
+        with c1: dia_sel = st.selectbox("📅 Día Control", sorted(df_registros["FECHA"].unique(), reverse=True))
+        with c2: 
             z_list = ["TODOS"] + sorted(df_registros["ZONAL"].unique().astype(str).tolist())
-            z_sel = st.selectbox("Zonal (Histórico)", z_list)
-        with f3:
-            df_temp = df_registros[df_registros["ZONAL"] == z_sel] if z_sel != "TODOS" else df_registros.copy()
-            s_list = ["TODOS"] + sorted(df_temp["SUPERVISOR"].unique().astype(str).tolist())
-            s_sel = st.selectbox("Supervisor (Histórico)", s_list)
+            z_sel = st.selectbox("Zonal", z_list)
+        with c3:
+            df_t = df_registros[df_registros["ZONAL"] == z_sel] if z_sel != "TODOS" else df_registros.copy()
+            s_list = ["TODOS"] + sorted(df_t["SUPERVISOR"].unique().astype(str).tolist())
+            s_sel = st.selectbox("Supervisor", s_list)
 
-        df_final = df_temp[df_temp["SUPERVISOR"] == s_sel] if s_sel != "TODOS" else df_temp.copy()
+        df_f = df_t[df_t["SUPERVISOR"] == s_sel] if s_sel != "TODOS" else df_t.copy()
 
-        # --- SECCIÓN 1: MONITOR HORARIO ---
+        # Monitor Horario
         st.divider()
-        st.markdown(f"⏰ **Actividad por Horas ({dia_sel})**")
-        df_hoy = df_final[df_final["FECHA"] == dia_sel]
-        if not df_hoy.empty:
-            rh = df_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
+        st.markdown(f"⏰ **Actividad ({dia_sel})**")
+        df_h = df_f[df_f["FECHA"] == dia_sel]
+        if not df_h.empty:
+            rh = df_h.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
             rh["TOTAL"] = rh.sum(axis=1)
             st.dataframe(rh.sort_values(by="TOTAL", ascending=False), use_container_width=True)
 
-        # --- SECCIÓN 2: RANKING DE METAS DIARIAS ---
+        # Matriz Productividad
         st.divider()
-        st.markdown("🏆 **Ranking de Metas Diarias (Meta: ≥ 40)**")
-        if not df_final.empty:
-            rd = df_final.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
-            rd = rd.reindex(sorted(rd.columns, reverse=True), axis=1)
-            cols_fechas = rd.columns.tolist()
-            rd["TOTAL ACUM"] = rd.sum(axis=1)
+        st.markdown(f"📋 **Matriz de Productividad ({z_sel})**")
+        if not df_f.empty:
+            tp = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
+            tp["TOTAL"] = tp.sum(axis=1)
+            tp = tp.sort_values(by="TOTAL", ascending=False)
             
-            def color_metas(val):
-                try:
-                    if int(val) >= 40: return 'background-color: #90EE90; color: #004D00; font-weight: bold; text-align: center;'
-                except: pass
-                return 'text-align: center;'
-
-            st.dataframe(rd.sort_values(by="TOTAL ACUM", ascending=False).style.applymap(color_metas, subset=cols_fechas)
-                         .set_properties(subset=['TOTAL ACUM'], **{'background-color': '#CCE5FF', 'font-weight': 'bold', 'text-align': 'center'}), 
-                         use_container_width=True)
-
-        # --- SECCIÓN 3: MATRIZ DE PRODUCTIVIDAD (IZQ-CENTRO) ---
-        st.divider()
-        st.markdown(f"📋 **Matriz de Productividad ({z_sel} - {s_sel})**")
-        if not df_final.empty:
-            tp = df_final.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
-            tp["TOTAL GESTIONES"] = tp.sum(axis=1)
-            tp = tp.sort_values(by="TOTAL GESTIONES", ascending=False)
-
-            # Estilo: Vendedor a la IZQUIERDA, Datos CENTRADOS
             st.dataframe(
                 tp.style.set_properties(**{'text-align': 'center'})
-                .set_properties(subset=['TOTAL GESTIONES'], **{'background-color': '#CCE5FF', 'color': '#004085', 'font-weight': 'bold'}),
+                .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}),
                 use_container_width=True
             )
 
-            # MÉTRICAS COMPACTAS
-            st.write("")
+            # Métricas
             m1, m2, m3 = st.columns(3)
-            tg = int(tp["TOTAL GESTIONES"].sum())
-            top_v = tp.index[0]
-            with m1: st.markdown(f"<div style='text-align:center'><small>Total Global</small><br><strong style='font-size:24px;color:#004085'>{tg}</strong></div>", unsafe_allow_html=True)
-            with m2: st.markdown(f"<div style='text-align:center'><small>Vendedor Top</small><br><strong style='font-size:16px;color:#2E7D32'>{top_v}</strong></div>", unsafe_allow_html=True)
-            with m3: st.markdown(f"<div style='text-align:center'><small>Promedio</small><br><strong style='font-size:24px;color:#004085'>{round(tg/len(tp),1)}</strong></div>", unsafe_allow_html=True)
+            with m1: st.metric("Total Global", int(tp["TOTAL"].sum()))
+            with m2: st.markdown(f"<small>Vendedor Top</small><br><strong>{tp.index[0]}</strong>", unsafe_allow_html=True)
+            with m3: st.metric("Promedio", round(tp["TOTAL"].mean(), 1))
 
-            # GRÁFICA DE DONA VISUAL
-            st.write("")
-            df_pie = tp.drop(columns=['TOTAL GESTIONES']).sum().reset_index()
-            df_pie.columns = ['GESTIÓN', 'CANTIDAD']
-            fig = px.pie(df_pie, values='CANTIDAD', names='GESTIÓN', hole=0.5, color_discrete_sequence=px.colors.qualitative.Pastel)
-            fig.update_traces(textinfo='value+percent', texttemplate='<b>%{label}</b><br>%{value} uds.')
-            fig.update_layout(height=420, margin=dict(t=30, b=10, l=10, r=10))
+            # Gráfica
+            df_p = tp.drop(columns=['TOTAL']).sum().reset_index()
+            df_p.columns = ['T', 'V']
+            fig = px.pie(df_p, values='V', names='T', hole=0.5)
             st.plotly_chart(fig, use_container_width=True)
 
-            # BOTÓN EXCEL
+            # Exportar
             buf = io.BytesIO()
-            with pd.ExcelWriter(buf, engine='xlsxwriter') as writer:
-                tp.to_excel(writer, sheet_name='Productividad')
-            st.download_button("📥 Descargar Matriz a Excel", data=buf.getvalue(), file_name="Productividad_Dimiare.xlsx", use_container_width=True)
+            with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
+                tp.to_excel(wr, sheet_name='Data')
+            st.download_button("📥 Descargar Excel", data=buf.getvalue(), file_name="Productividad.xlsx", use_container_width=True)
