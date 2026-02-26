@@ -287,7 +287,7 @@ with tab2:
                 # 1. Agrupamos y contamos
                 df_donut = df_final['DETALLE'].value_counts().reset_index()
                 df_donut.columns = ['Gestión', 'Total']
-                total_gestiones = df_donut['Total'].sum()
+                total_gestiones = int(df_donut['Total'].sum())
 
                 import plotly.express as px
                 
@@ -296,25 +296,24 @@ with tab2:
                     df_donut, 
                     values='Total', 
                     names='Gestión', 
-                    hole=0.5, # Hueco central
+                    hole=0.5,
                     color_discrete_sequence=px.colors.qualitative.Safe,
                     template='plotly_white'
                 )
 
                 # 3. Etiquetas con Cantidad + Porcentaje
-                # El formato '%{label}: %{value} (%{percent})' muestra Nombre, Número y %
                 fig.update_traces(
                     texttemplate='<b>%{label}</b><br>%{value} uds.<br>%{percent}',
-                    textposition='outside', # Lo ponemos afuera para que no se amontone
+                    textposition='outside',
                     pull=[0.02] * len(df_donut),
                     marker=dict(line=dict(color='#FFFFFF', width=2))
                 )
 
-                # 4. Texto Central con el Total General
+                # 4. Texto Central con el Total General (Color fijo para evitar NameError)
                 fig.add_annotation(
                     text=f"TOTAL<br><b>{total_gestiones}</b>",
                     showarrow=False,
-                    font=dict(size=20, color=texto_azul_oscuro),
+                    font=dict(size=20, color='#004085'), # Azul oscuro directo
                     x=0.5, y=0.5
                 )
 
@@ -331,10 +330,3 @@ with tab2:
                 
             else:
                 st.warning("No hay datos para mostrar en la gráfica.")
-
-
-
-
-
-
-
