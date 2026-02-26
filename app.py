@@ -119,12 +119,23 @@ with tab1:
             elif detalle == "SELECCIONA":
                 st.error("❌ Elija un tipo de gestión.")
                 error = True
+           
+            # Validaciones Específicas VENTA FIJA / AGENDADO
             elif detalle in ["VENTA FIJA", "CLIENTE AGENDADO"]:
                 if any(x == "SELECCIONA" or not str(x).strip() for x in [n_cl, d_cl, dir_ins, c1, n_ped, mail, c_fe, t_op, prod]):
-                    st.error("❌ Complete todos los campos marcados con (*).")
+                    st.error("❌ Error: Todos los campos marcados con (*) son obligatorios.")
                     error = True
-                elif len(d_cl) < 8 or len(c1) != 9 or len(n_ped) != 10 or len(c_fe) != 13:
-                    st.error("❌ Verifique la longitud de DNI, Celular, Pedido o FE.")
+                elif len(d_cl) < 8:
+                    st.error("❌ Error: El DNI/RUC debe tener al menos 8 dígitos.")
+                    error = True
+                elif len(c1) != 9 or not c1.isdigit():
+                    st.error("❌ Error: El celular debe tener 9 dígitos numéricos.")
+                    error = True
+                elif len(n_ped) != 10 or not n_ped.isdigit():
+                    st.error("❌ Error: El N° de Pedido debe tener 10 dígitos.")
+                    error = True
+                elif len(c_fe) != 13:
+                    st.error("❌ Error: El código FE debe tener exactamente 13 caracteres.")
                     error = True
 
             if not error:
@@ -206,3 +217,4 @@ with tab2:
             with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
                 tp.to_excel(wr, sheet_name='Data')
             st.download_button("📥 Descargar Excel", data=buf.getvalue(), file_name="Productividad.xlsx", use_container_width=True)
+
