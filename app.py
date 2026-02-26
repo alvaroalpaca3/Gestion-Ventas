@@ -1,4 +1,4 @@
- import streamlit as st
+import streamlit as st
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -226,3 +226,4 @@ with tab2:
         st.error("❌ Credenciales incorrectas.")
     else:
         st.warning("🔒 Ingrese credenciales de administrador para ver el Dashboard.")
+
