@@ -192,7 +192,15 @@ with tab2:
             supervisores = ["TODOS"] + sorted(df_t["SUPERVISOR"].unique().tolist())
             sup_sel = st.selectbox("Supervisor (Histórico)", supervisores)
 
-        # --- SECCIÓN 1: MONITOR HORARIO (CENTRADO) ---
+        # CSS PARA CENTRAR CABECERAS Y CELDAS
+        st.markdown("""
+            <style>
+                th {text-align: center !important;}
+                td {text-align: center !important;}
+            </style>
+        """, unsafe_allow_html=True)
+
+        # --- SECCIÓN 1: MONITOR HORARIO (CON CENTRADO) ---
         st.divider()
         st.markdown(f"⏰ **Actividad por Horas ({dia_sel})**")
         df_hoy = df_registros[df_registros["FECHA"] == dia_sel]
@@ -202,7 +210,7 @@ with tab2:
             ranking_h["TOTAL"] = ranking_h.sum(axis=1)
             ranking_h = ranking_h.sort_values(by="TOTAL", ascending=False)
             
-            # Estilo centrado y decorativo
+            # Mostramos con gradiente azul en el total
             st.dataframe(
                 ranking_h.style.set_properties(**{'text-align': 'center'})
                 .background_gradient(cmap='Blues', subset=['TOTAL']),
@@ -220,35 +228,37 @@ with tab2:
             ranking_d = df_acc.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
             ranking_d = ranking_d.reindex(sorted(ranking_d.columns, reverse=True), axis=1)
             
-            cols_fechas = ranking_d.columns.tolist() # Guardamos fechas antes de crear el Total
+            cols_fechas = ranking_d.columns.tolist() # Solo columnas de fechas
             ranking_d["TOTAL ACUMULADO"] = ranking_d.sum(axis=1)
             ranking_d = ranking_d.sort_values(by="TOTAL ACUMULADO", ascending=False)
 
-            # Lógica de color meta >= 40
             def style_winner(val):
                 try:
                     if float(val) >= 40: return 'background-color: #90EE90; color: #004D00; font-weight: bold;'
                 except: pass
                 return ''
 
-            # Mostramos tabla con Scroll, Centrado y Colores Distintivos
+            # Aplicamos estilos: Verde en fechas, Azul en Total, Todo Centrado
             st.dataframe(
                 ranking_d.style.set_properties(**{'text-align': 'center'})
-                .applymap(style_winner, subset=cols_fechas) # Verde solo en días
-                .set_properties(subset=['TOTAL ACUMULADO'], **{'background-color': '#CCE5FF', 'color': '#004085'}) # Azul en Total
+                .applymap(style_winner, subset=cols_fechas)
+                .set_properties(subset=['TOTAL ACUMULADO'], **{'background-color': '#CCE5FF', 'color': '#004085'})
                 , use_container_width=True
             )
 
-            # --- BOTÓN EXCEL ---
+            # --- BOTÓN EXCEL (Requiere xlsxwriter en requirements.txt) ---
             import io
-            buffer = io.BytesIO()
-            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                ranking_d.to_excel(writer, sheet_name='Ranking')
-            
-            st.download_button("📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
-                               file_name=f"Metas_{zonal_sel}.xlsx", use_container_width=True)
-            
-            st.download_button(label="📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
-                               file_name=f"Reporte_Metas_{dia_sel.replace('/','-')}.xlsx",
-                               mime="application/vnd.ms-excel", use_container_width=True)
-
+            try:
+                buffer = io.BytesIO()
+                with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                    ranking_d.to_excel(writer, sheet_name='Ranking_Metas')
+                
+                st.download_button(
+                    label="📥 Descargar Reporte a Excel",
+                    data=buffer.getvalue(),
+                    file_name=f"Metas_Vendedores.xlsx",
+                    mime="application/vnd.ms-excel",
+                    use_container_width=True
+                )
+            except Exception as e:
+                st.error(f"Error al generar Excel: Asegúrate de tener 'xlsxwriter' instalado.")
