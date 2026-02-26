@@ -279,47 +279,40 @@ with tab2:
             st.download_button("📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
                                file_name=f"Metas_Vendedores.xlsx", use_container_width=True)
 
-# --- SECCIÓN 3: ANÁLISIS POR TIPO DE GESTIÓN (GRÁFICA) ---
+# --- SECCIÓN 3: COMPOSICIÓN DE GESTIONES (GRÁFICA DE DONA) ---
             st.divider()
-            st.markdown(f"📈 **Resumen de Gestiones (Filtro Aplicado)**")
+            st.markdown(f"📊 **Composición de Gestiones ({zonal_sel} - {sup_sel})**")
 
             if not df_final.empty:
                 # 1. Agrupamos y contamos
-                df_grafico = df_final['DETALLE'].value_counts().reset_index()
-                df_grafico.columns = ['Tipo de Gestión', 'Cantidad']
-                df_grafico = df_grafico.sort_values(by='Cantidad', ascending=True)
+                df_donut = df_final['DETALLE'].value_counts().reset_index()
+                df_donut.columns = ['Gestión', 'Total']
 
                 import plotly.express as px
                 
-                # 2. Creamos la figura con parámetros seguros
-                fig = px.bar(
-                    df_grafico, 
-                    x='Cantidad', 
-                    y='Tipo de Gestión',
-                    orientation='h',
-                    text='Cantidad', # Esto pone el número en la barra
-                    color='Tipo de Gestión',
-                    color_discrete_sequence=px.colors.qualitative.Pastel,
+                # 2. Creamos la Dona
+                fig = px.pie(
+                    df_donut, 
+                    values='Total', 
+                    names='Gestión', 
+                    hole=0.5, # Esto crea el hueco central de la dona
+                    color_discrete_sequence=px.colors.qualitative.Safe,
                     template='plotly_white'
                 )
 
-                # 3. Ajustes de trazado SEGUROS (Evitamos el error de 'outside')
+                # 3. Personalización de etiquetas y trazo
                 fig.update_traces(
-                    texttemplate='%{text}', 
-                    textposition='auto', # 'auto' evita el ValueError si no hay espacio
-                    marker_line_color='rgb(8,48,107)',
-                    marker_line_width=1,
-                    opacity=0.8
+                    textinfo='percent+label',
+                    pull=[0.05] * len(df_donut), # Separa un poco las tajadas
+                    marker=dict(line=dict(color='#000000', width=1))
                 )
 
                 # 4. Ajustes de diseño
                 fig.update_layout(
-                    showlegend=False,
-                    xaxis_title="Cantidad Total",
-                    yaxis_title=None,
-                    height=300 + (len(df_grafico) * 20), # Altura dinámica según ítems
-                    margin=dict(l=20, r=20, t=30, b=20),
-                    font=dict(size=12) # Definimos la fuente aquí, es más seguro
+                    showlegend=True,
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
+                    height=450,
+                    margin=dict(l=20, r=20, t=30, b=100)
                 )
 
                 # 5. Mostrar
@@ -327,6 +320,7 @@ with tab2:
                 
             else:
                 st.warning("No hay datos para mostrar en la gráfica.")
+
 
 
 
