@@ -150,33 +150,67 @@ with tab1:
                     st.rerun()
                 except Exception as e: st.error(f"Error: {e}")
 
-# --- PESTAÑA 2: MI PROGRESO (CORREGIDA CON DOCUMENTO VENDEDOR) ---
+# --- PESTAÑA 2: MI PROGRESO (PERSONALIZADA) ---
 with tab_personal:
     if nom_v == "N/A":
         st.warning("👈 Ingrese su DNI en la barra lateral para ver su progreso.")
     else:
-        st.subheader(f"📈 Mi Actividad: {nom_v}")
+        st.subheader(f"📈 Resumen de Actividad: {nom_v}")
         if not df_registros.empty:
-            # Apuntamos directamente a DOCUMENTO VENDEDOR
             col_target = "DOCUMENTO VENDEDOR"
             
             if col_target in df_registros.columns:
+                # Limpieza de datos para el filtro
                 df_registros[col_target] = df_registros[col_target].astype(str).str.replace("'", "").str.strip()
                 df_mio = df_registros[df_registros[col_target] == dni_clean].copy()
                 
                 if df_mio.empty:
                     st.info("No tienes registros guardados aún.")
                 else:
-                    st.markdown("🏆 **Resumen por Día (Meta ≥ 40)**")
-                    rd_m = df_mio.pivot_table(index="FECHA", values="DETALLE", aggfunc="count").T
-                    st.dataframe(rd_m.style.applymap(lambda v: 'background-color: #90EE90; color: black;' if v >= 40 else ''), use_container_width=True)
+                    # 1. MONITOR HORARIO PERSONAL (Día actual)
+                    st.markdown("### 1️⃣ MI MONITOR HORARIO (Hoy)")
+                    tz = pytz.timezone('America/Lima')
+                    hoy = datetime.now(tz).strftime("%d/%m/%Y")
+                    df_mio_hoy = df_mio[df_mio["FECHA"] == hoy]
                     
-                    fig_m = px.pie(df_mio, names='DETALLE', hole=0.4, title="Mix Personal de Gestión")
-                    st.plotly_chart(fig_m, use_container_width=True)
-            else:
-                st.error(f"⚠️ Error: No se encuentra la columna '{col_target}' en la hoja de registros.")
+                    if not df_mio_hoy.empty:
+                        mi_rh = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
+                        mi_rh["TOTAL"] = mi_rh.sum(axis=1)
+                        st.dataframe(mi_rh.style.set_properties(**{'text-align': 'center', 'background-color': '#F0F2F6'}), use_container_width=True)
+                    else:
+                        st.caption(f"No registras actividad hoy {hoy} todavía.")
 
-# --- PESTAÑA 3: DASHBOARD (MANTENIENDO TU LÓGICA DE ADMIN) ---
+                    # 2. RANKING METAS PERSONAL (Histórico)
+                    st.divider()
+                    st.markdown("### 2️⃣ MI RANKING DE METAS (Histórico)")
+                    mi_rd = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
+                    # Reordenar fechas de más reciente a más antigua
+                    mi_rd = mi_rd.reindex(sorted(mi_rd.columns, reverse=True), axis=1)
+                    mi_rd["TOTAL ACUM"] = mi_rd.sum(axis=1)
+                    
+                    st.dataframe(mi_rd.style.applymap(lambda v: 'background-color: #90EE90; color: black;' if isinstance(v, (int, float)) and v >= 40 else '', subset=mi_rd.columns[:-1])
+                                 .set_properties(**{'text-align': 'center'}), use_container_width=True)
+
+                    # 3. MATRIZ PRODUCTIVIDAD PERSONAL
+                    st.divider()
+                    st.markdown("### 3️⃣ MI MATRIZ DE PRODUCTIVIDAD")
+                    col_pie, col_tabla = st.columns([1, 2])
+                    
+                    with col_pie:
+                        fig_m = px.pie(df_mio, names='DETALLE', hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
+                        fig_m.update_layout(showlegend=False, height=300, margin=dict(t=0, b=0, l=0, r=0))
+                        st.plotly_chart(fig_m, use_container_width=True)
+                    
+                    with col_tabla:
+                        mi_tp = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
+                        mi_tp["TOTAL"] = mi_tp.sum(axis=1)
+                        st.dataframe(mi_tp.style.set_properties(**{'text-align': 'center'})
+                                     .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
+            else:
+                st.error(f"⚠️ No se encontró la columna '{col_target}' para filtrar tu progreso.")
+
+
+# --- PESTAÑA 3: DASHBOARD (ADMIN) ---
 with tab2:
     st.subheader("🔐 Acceso Administrador")
     c_u, c_p = st.columns(2)
@@ -188,6 +222,7 @@ with tab2:
         if not df_registros.empty:
             df_registros['DETALLE'] = df_registros['DETALLE'].astype(str).str.strip().str.upper()
             
+            # FILTROS
             f1, f2, f3 = st.columns(3)
             with f1: dia_sel = st.selectbox("📅 Día Control", sorted(df_registros["FECHA"].unique(), reverse=True))
             with f2:
@@ -200,7 +235,7 @@ with tab2:
             
             df_f = df_t[df_t["SUPERVISOR"] == s_sel] if s_sel != "TODOS" else df_t.copy()
 
-            # MONITOR HORARIO
+            # 1. MONITOR HORARIO
             st.divider()
             st.markdown(f"⏰ **Monitor Horario ({dia_sel})**")
             df_h = df_f[df_f["FECHA"] == dia_sel]
@@ -209,7 +244,7 @@ with tab2:
                 rh["TOTAL"] = rh.sum(axis=1)
                 st.dataframe(rh.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'}), use_container_width=True)
 
-            # RANKING METAS
+            # 2. RANKING METAS
             st.divider()
             st.markdown("🏆 **Ranking Metas Diarias (Meta ≥ 40)**")
             rd = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
@@ -219,18 +254,25 @@ with tab2:
             st.dataframe(rd.sort_values(by="TOTAL ACUM", ascending=False).style.applymap(lambda v: 'background-color: #90EE90; color: black;' if isinstance(v, (int, float)) and v >= 40 else '', subset=rd.columns[:-1])
                          .set_properties(**{'text-align': 'center'}), use_container_width=True)
 
-              # Exportar
+            # --- FUNCIONALIDAD DE DESCARGA (RECUPERADA) ---
             buf = io.BytesIO()
             with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
-                tp.to_excel(wr, sheet_name='Matriz')
-            st.download_button("📥 Descargar Reporte Excel", data=buf.getvalue(), file_name="Productividad.xlsx", use_container_width=True)
-            
-            # MATRIZ PRODUCTIVIDAD
+                rd.to_excel(wr, sheet_name='Ranking_Metas')
+            st.download_button(
+                label="📥 Descargar Ranking Metas (Excel)",
+                data=buf.getvalue(),
+                file_name=f"Ranking_Metas_{dia_sel.replace('/','-')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+
+            # 3. MATRIZ PRODUCTIVIDAD
             st.divider()
             st.markdown(f"📋 **Matriz de Productividad ({z_sel})**")
             tp = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
             tp["TOTAL"] = tp.sum(axis=1)
             st.dataframe(tp.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'})
                          .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
+            
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
