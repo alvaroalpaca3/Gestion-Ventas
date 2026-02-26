@@ -213,20 +213,13 @@ with tab2:
         st.dataframe(tp.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'})
                      .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
 
-        # 4. Métricas y Gráfica
-        m1, m2, m3 = st.columns(3)
-        with m1: st.metric("Total Global", int(tp["TOTAL"].sum()))
-        with m2: st.markdown(f"<small>Top Vendedor</small><br><strong>{tp.index[0]}</strong>", unsafe_allow_html=True)
-        with m3: st.metric("Promedio", round(tp["TOTAL"].mean(), 1))
-
-        fig = px.pie(tp.drop(columns=['TOTAL']).sum().reset_index(), values=0, names='DETALLE', hole=0.5)
-        st.plotly_chart(fig, use_container_width=True)
-
-        # 5. Exportación
+    
+        # 4. Exportación
         buf = io.BytesIO()
         with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
             tp.to_excel(wr, sheet_name='Data')
         st.download_button("📥 Descargar Excel", data=buf.getvalue(), file_name="Productividad.xlsx", use_container_width=True)
+
 
 
 
