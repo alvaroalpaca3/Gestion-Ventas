@@ -285,46 +285,45 @@ with tab2:
             st.markdown(f"📊 **Resumen de Gestiones ({zonal_sel} - {sup_sel})**")
 
             if not df_final.empty:
-                # 1. LIMPIEZA MAESTRA: Quitamos espacios y pasamos todo a MAYÚSCULAS
-                df_temp_graf = df_final.copy()
-                df_temp_graf['DETALLE'] = df_temp_graf['DETALLE'].astype(str).str.strip().str.upper()
-
-                # 2. AGRUPACIÓN REAL: Contamos cuántas veces aparece cada gestión
-                # Esto es lo que convertirá tus ocho "1" en un solo "8"
-                df_donut = df_temp_graf['DETALLE'].value_counts().reset_index()
-                df_donut.columns = ['Gestión', 'Total']
+                # 1. LIMPIEZA Y AGRUPACIÓN MANUAL (Esto es lo que falta)
+                df_counts = df_final.copy()
+                # Aseguramos que la columna sea texto y no tenga espacios
+                df_counts['DETALLE'] = df_counts['DETALLE'].astype(str).str.strip().str.upper()
                 
-                # 3. Suma total para el centro del círculo
-                suma_total_grafica = int(df_donut['Total'].sum())
+                # CREAMOS EL RESUMEN: Agrupamos por 'DETALLE' y contamos las filas
+                df_resumen = df_counts.groupby('DETALLE').size().reset_index(name='CANTIDAD')
+                
+                # Calculamos el total real sumando la nueva columna 'CANTIDAD'
+                total_real = int(df_resumen['CANTIDAD'].sum())
 
                 import plotly.express as px
                 
-                # 4. Construcción de la Dona
+                # 2. Construcción de la Dona usando el RESUMEN
                 fig_dona = px.pie(
-                    df_donut, 
-                    values='Total', 
-                    names='Gestión', 
+                    df_resumen, 
+                    values='CANTIDAD',  # Ahora usamos la columna sumada
+                    names='DETALLE', 
                     hole=0.5,
                     color_discrete_sequence=px.colors.qualitative.Safe,
                     template='plotly_white'
                 )
 
-                # 5. Etiquetas de Cantidad + Porcentaje
+                # 3. Etiquetas de Cantidad + Porcentaje
                 fig_dona.update_traces(
                     texttemplate='<b>%{label}</b><br>%{value} uds.<br>%{percent}',
                     textposition='outside',
                     marker=dict(line=dict(color='#FFFFFF', width=2))
                 )
 
-                # 6. Texto Central (Azul oscuro directo para evitar errores de variable)
+                # 4. Texto Central SINCRONIZADO
                 fig_dona.add_annotation(
-                    text=f"TOTAL<br><b>{suma_total_grafica}</b>",
+                    text=f"TOTAL<br><b>{total_real}</b>",
                     showarrow=False,
                     font=dict(size=22, color='#004085'),
                     x=0.5, y=0.5
                 )
 
-                # 7. Ajustes de diseño y leyenda
+                # 5. Ajustes de diseño
                 fig_dona.update_layout(
                     showlegend=True,
                     legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
@@ -332,9 +331,9 @@ with tab2:
                     margin=dict(l=50, r=50, t=30, b=100)
                 )
 
-                # 8. Renderizado
                 st.plotly_chart(fig_dona, use_container_width=True)
                 
             else:
-                st.warning("No hay datos registrados con los filtros actuales.")
+                st.warning("No hay datos para mostrar con los filtros actuales.")
+
 
