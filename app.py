@@ -66,8 +66,8 @@ else:
     nom_v = sup_v = zon_v = "N/A"
 
 st.sidebar.write("")
-st.sidebar.caption("©2026 Todos los derechos reservados")
-st.sidebar.caption("by Dubby System SAC")
+st.sidebar.caption("©2026 Todos los derechos reservados by Dubby System SAC")
+
 
 # --- 5. CUERPO PRINCIPAL ---
 st.header("📊 REGISTRO DE GESTIÓN DIARIA")
@@ -169,7 +169,7 @@ with tab_personal:
                     st.info("Sin registros guardados.")
                 else:
                     # 1. MONITOR HORARIO (Etiqueta pequeña)
-                    st.markdown("##### **1. Monitor Horario (Hoy)**")
+                    st.markdown("##### **1. Monitor Diario)**")
                     tz = pytz.timezone('America/Lima')
                     hoy = datetime.now(tz).strftime("%d/%m/%Y")
                     df_mio_hoy = df_mio[df_mio["FECHA"] == hoy]
@@ -182,7 +182,7 @@ with tab_personal:
                         st.caption(f"Sin actividad hoy {hoy}")
 
                     # 2. RANKING METAS (Etiqueta pequeña)
-                    st.markdown("##### **2. Ranking Metas (Histórico)**")
+                    st.markdown("##### **2. Avance del Mes**")
                     mi_rd = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
                     mi_rd = mi_rd.reindex(sorted(mi_rd.columns, reverse=True), axis=1)
                     mi_rd["TOTAL"] = mi_rd.sum(axis=1)
@@ -272,4 +272,5 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
