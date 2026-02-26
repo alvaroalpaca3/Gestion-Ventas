@@ -150,25 +150,26 @@ with tab1:
                     st.rerun()
                 except Exception as e: st.error(f"Error: {e}")
 
-# --- PESTAÑA 2: MI PROGRESO (PERSONALIZADA) ---
+# --- PESTAÑA 2: MI PROGRESO (OPTIMIZADA PARA MÓVIL) ---
 with tab_personal:
     if nom_v == "N/A":
-        st.warning("👈 Ingrese su DNI en la barra lateral para ver su progreso.")
+        st.warning("👈 Ingrese su DNI en la barra lateral.")
     else:
-        st.subheader(f"📈 Resumen de Actividad: {nom_v}")
+        # Título más pequeño y elegante
+        st.markdown(f"### 📈 Mi Actividad: <span style='color:#1E3A8A;'>{nom_v}</span>", unsafe_allow_html=True)
+        
         if not df_registros.empty:
             col_target = "DOCUMENTO VENDEDOR"
             
             if col_target in df_registros.columns:
-                # Limpieza de datos para el filtro
                 df_registros[col_target] = df_registros[col_target].astype(str).str.replace("'", "").str.strip()
                 df_mio = df_registros[df_registros[col_target] == dni_clean].copy()
                 
                 if df_mio.empty:
-                    st.info("No tienes registros guardados aún.")
+                    st.info("Sin registros guardados.")
                 else:
-                    # 1. MONITOR HORARIO PERSONAL (Día actual)
-                    st.markdown("### 1️⃣ MI MONITOR HORARIO (Hoy)")
+                    # 1. MONITOR HORARIO (Etiqueta pequeña)
+                    st.markdown("##### **1. Monitor Horario (Hoy)**")
                     tz = pytz.timezone('America/Lima')
                     hoy = datetime.now(tz).strftime("%d/%m/%Y")
                     df_mio_hoy = df_mio[df_mio["FECHA"] == hoy]
@@ -176,38 +177,33 @@ with tab_personal:
                     if not df_mio_hoy.empty:
                         mi_rh = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
                         mi_rh["TOTAL"] = mi_rh.sum(axis=1)
-                        st.dataframe(mi_rh.style.set_properties(**{'text-align': 'center', 'background-color': '#F0F2F6'}), use_container_width=True)
+                        st.dataframe(mi_rh.style.set_properties(**{'text-align': 'center', 'font-size': '12px'}), use_container_width=True)
                     else:
-                        st.caption(f"No registras actividad hoy {hoy} todavía.")
+                        st.caption(f"Sin actividad hoy {hoy}")
 
-                    # 2. RANKING METAS PERSONAL (Histórico)
-                    st.divider()
-                    st.markdown("### 2️⃣ MI RANKING DE METAS (Histórico)")
+                    # 2. RANKING METAS (Etiqueta pequeña)
+                    st.markdown("##### **2. Ranking Metas (Histórico)**")
                     mi_rd = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
-                    # Reordenar fechas de más reciente a más antigua
                     mi_rd = mi_rd.reindex(sorted(mi_rd.columns, reverse=True), axis=1)
-                    mi_rd["TOTAL ACUM"] = mi_rd.sum(axis=1)
+                    mi_rd["TOTAL"] = mi_rd.sum(axis=1)
                     
                     st.dataframe(mi_rd.style.applymap(lambda v: 'background-color: #90EE90; color: black;' if isinstance(v, (int, float)) and v >= 40 else '', subset=mi_rd.columns[:-1])
-                                 .set_properties(**{'text-align': 'center'}), use_container_width=True)
+                                 .set_properties(**{'text-align': 'center', 'font-size': '12px'}), use_container_width=True)
 
-                    # 3. MATRIZ PRODUCTIVIDAD PERSONAL
-                    st.divider()
-                    st.markdown("### 3️⃣ MI MATRIZ DE PRODUCTIVIDAD")
-                    col_pie, col_tabla = st.columns([1, 2])
+                    # 3. MATRIZ PRODUCTIVIDAD (Etiqueta pequeña y Layout compacto)
+                    st.markdown("##### **3. Matriz de Productividad**")
                     
-                    with col_pie:
-                        fig_m = px.pie(df_mio, names='DETALLE', hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
-                        fig_m.update_layout(showlegend=False, height=300, margin=dict(t=0, b=0, l=0, r=0))
-                        st.plotly_chart(fig_m, use_container_width=True)
+                    # En móvil, el gráfico se verá mejor arriba de la tabla
+                    fig_m = px.pie(df_mio, names='DETALLE', hole=0.4)
+                    fig_m.update_layout(showlegend=True, height=250, margin=dict(t=10, b=10, l=10, r=10), legend=dict(orientation="h", y=-0.1))
+                    st.plotly_chart(fig_m, use_container_width=True)
                     
-                    with col_tabla:
-                        mi_tp = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
-                        mi_tp["TOTAL"] = mi_tp.sum(axis=1)
-                        st.dataframe(mi_tp.style.set_properties(**{'text-align': 'center'})
-                                     .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
+                    mi_tp = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
+                    mi_tp["TOTAL"] = mi_tp.sum(axis=1)
+                    st.dataframe(mi_tp.style.set_properties(**{'text-align': 'center', 'font-size': '12px'})
+                                 .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
             else:
-                st.error(f"⚠️ No se encontró la columna '{col_target}' para filtrar tu progreso.")
+                st.error("Columna Documento no encontrada.")
 
 
 # --- PESTAÑA 3: DASHBOARD (ADMIN) ---
@@ -276,3 +272,4 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
