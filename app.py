@@ -281,44 +281,53 @@ with tab2:
 
 # --- SECCIÓN 3: ANÁLISIS POR TIPO DE GESTIÓN (GRÁFICA) ---
             st.divider()
-            st.markdown(f"📈 **Distribución de Gestiones - Filtro Aplicado**")
+            st.markdown(f"📈 **Resumen de Gestiones (Filtro Aplicado)**")
 
             if not df_final.empty:
-                # Agrupamos por el campo DETALLE para la gráfica
+                # 1. Agrupamos y contamos
                 df_grafico = df_final['DETALLE'].value_counts().reset_index()
                 df_grafico.columns = ['Tipo de Gestión', 'Cantidad']
-                
-                # Ordenar de mayor a menor
                 df_grafico = df_grafico.sort_values(by='Cantidad', ascending=True)
 
                 import plotly.express as px
                 
-                # Crear la gráfica de barras
+                # 2. Creamos la figura con parámetros seguros
                 fig = px.bar(
                     df_grafico, 
                     x='Cantidad', 
                     y='Tipo de Gestión',
                     orientation='h',
-                    text='Cantidad',
+                    text='Cantidad', # Esto pone el número en la barra
                     color='Tipo de Gestión',
                     color_discrete_sequence=px.colors.qualitative.Pastel,
                     template='plotly_white'
                 )
 
-                # Ajustes estéticos
-                fig.update_traces(textposition='outside', font=dict(size=12))
-                fig.update_layout(
-                    showlegend=False,
-                    xaxis_title="Número de Gestiones",
-                    yaxis_title=None,
-                    height=350,
-                    margin=dict(l=20, r=20, t=30, b=20)
+                # 3. Ajustes de trazado SEGUROS (Evitamos el error de 'outside')
+                fig.update_traces(
+                    texttemplate='%{text}', 
+                    textposition='auto', # 'auto' evita el ValueError si no hay espacio
+                    marker_line_color='rgb(8,48,107)',
+                    marker_line_width=1,
+                    opacity=0.8
                 )
 
-                # Mostrar la gráfica
+                # 4. Ajustes de diseño
+                fig.update_layout(
+                    showlegend=False,
+                    xaxis_title="Cantidad Total",
+                    yaxis_title=None,
+                    height=300 + (len(df_grafico) * 20), # Altura dinámica según ítems
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    font=dict(size=12) # Definimos la fuente aquí, es más seguro
+                )
+
+                # 5. Mostrar
                 st.plotly_chart(fig, use_container_width=True)
+                
             else:
-                st.warning("No hay datos suficientes para generar la gráfica con los filtros actuales.")
+                st.warning("No hay datos para mostrar en la gráfica.")
+
 
 
 
