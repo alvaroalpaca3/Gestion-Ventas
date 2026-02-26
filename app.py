@@ -218,12 +218,9 @@ with tab2:
             st.dataframe(tp.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'})
                          .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
 
-            # Gráfica
-            fig = px.pie(tp.drop(columns=['TOTAL']).sum().reset_index(), values=0, names='index', hole=0.5, title="Mix de Gestión")
-            st.plotly_chart(fig, use_container_width=True)
-
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
     else:
         st.warning("🔒 Ingrese credenciales de administrador para ver el Dashboard.")
+
 
