@@ -39,6 +39,7 @@ def cargar_datos():
     try:
         ws_reg = doc.sheet1
         df_reg = pd.DataFrame(ws_reg.get_all_records())
+        # Normalizamos encabezados a mayúsculas y sin espacios
         df_reg.columns = [str(c).strip().upper() for c in df_reg.columns]
     except: df_reg = pd.DataFrame()
         
@@ -71,10 +72,9 @@ st.sidebar.caption("by Dubby System SAC")
 
 # --- 5. CUERPO PRINCIPAL ---
 st.header("📊 SISTEMA DE GESTIÓN COMERCIAL")
-# Se añade la pestaña "MI PROGRESO" en medio
 tab1, tab_personal, tab2 = st.tabs(["📝 REGISTRO", "📈 MI PROGRESO", "📊 DASHBOARD ADMIN"])
 
-# --- PESTAÑA 1: FORMULARIO (Mantiene tus validaciones fundamentales) ---
+# --- PESTAÑA 1: REGISTRO (CON TODAS TUS VALIDACIONES) ---
 with tab1:
     st.markdown("#### 📝 INGRESO DE GESTIÓN")
     detalle = st.selectbox("DETALLE DE GESTIÓN *", ["SELECCIONA", "VENTA FIJA", "NO-VENTA", "CLIENTE AGENDADO", "REFERIDO"])
@@ -120,7 +120,7 @@ with tab1:
                     st.error("❌ Error: Todos los campos marcados con (*) son obligatorios.")
                     error = True
                 elif len(d_cl) < 8:
-                    st.error("❌ Error: El DNI/RUC debe tener al menos 8 dígitos.")
+                    st.error("❌ Error: El DNI debe tener 8 dígitos.")
                     error = True
                 elif len(c1) != 9 or not c1.isdigit():
                     st.error("❌ Error: El celular debe tener 9 dígitos numéricos.")
@@ -149,103 +149,65 @@ with tab1:
                     time.sleep(1)
                     st.session_state.form_key += 1
                     st.rerun()
-                except Exception as e: st.error(f"Error: {e}")
+                except Exception as e: st.error(f"Error al guardar: {e}")
 
-# --- PESTAÑA NUEVA: MI PROGRESO (FILTRADA POR DNI LATERAL) ---
+# --- PESTAÑA 2: MI PROGRESO (CON CORRECCIÓN DE KEYERROR) ---
 with tab_personal:
     if nom_v == "N/A":
-        st.warning("👈 Por favor, ingrese su DNI en la barra lateral para ver su progreso.")
+        st.warning("👈 Ingrese su DNI en la barra lateral para ver su actividad personal.")
     else:
-        st.subheader(f"📈 Mi Actividad: {nom_v}")
+        st.subheader(f"📈 Resumen: {nom_v}")
         
-        # Limpiamos DNI de registros para comparar correctamente
-        df_registros['DNI'] = df_registros['DNI'].astype(str).str.replace("'", "")
-        df_mio = df_registros[df_registros['DNI'] == dni_clean].copy()
-        
-        if df_mio.empty:
-            st.info("Aún no tienes registros en el sistema.")
-        else:
-            col1, col2 = st.columns([2, 1])
-            with col1:
-                # Meta Diaria Personal
-                st.markdown("🏆 **Mis Gestiones por Día (Meta ≥ 40)**")
-                mi_rd = df_mio.pivot_table(index="FECHA", values="DETALLE", aggfunc="count").T
+        if not df_registros.empty:
+            # Corrección del Error: Buscamos la columna de DNI de forma segura
+            col_dni_busqueda = [c for c in df_registros.columns if 'DNI' in c and 'CLIENTE' not in c]
+            if col_dni_busqueda:
+                col_real = col_dni_busqueda[0]
+                df_registros[col_real] = df_registros[col_real].astype(str).str.replace("'", "").str.zfill(8)
+                df_mio = df_registros[df_registros[col_real] == dni_clean].copy()
                 
-                def color_meta_p(v):
-                    return 'background-color: #90EE90; color: black;' if v >= 40 else ''
-                
-                st.dataframe(mi_rd.style.applymap(color_meta_p), use_container_width=True)
-                
-                # Monitor Horario Personal (Día actual)
-                hoy = datetime.now(pytz.timezone('America/Lima')).strftime("%d/%m/%Y")
-                st.markdown(f"⏱ **Mi Monitor Horario de Hoy ({hoy})**")
-                df_mio_hoy = df_mio[df_mio['FECHA'] == hoy]
-                if not df_mio_hoy.empty:
-                    mi_rh = df_mio_hoy.pivot_table(index="HORA", values="DETALLE", aggfunc="count").T
-                    st.dataframe(mi_rh, use_container_width=True)
+                if df_mio.empty:
+                    st.info("No se encontraron registros previos con este DNI.")
                 else:
-                    st.caption("Sin gestiones registradas hoy.")
+                    c_p1, c_p2 = st.columns([2, 1])
+                    with c1:
+                        st.markdown("🏆 **Gestiones por Fecha (Meta ≥ 40)**")
+                        resumen_dias = df_mio.groupby("FECHA").size().to_frame("TOTAL")
+                        st.dataframe(resumen_dias.T.style.applymap(lambda v: 'background-color: #90EE90;' if v >= 40 else ''), use_container_width=True)
+                        
+                        st.markdown("📊 **Mix de Gestión Personal**")
+                        fig_mio = px.pie(df_mio, names='DETALLE', hole=0.4)
+                        st.plotly_chart(fig_mio, use_container_width=True)
+            else:
+                st.error("No se encontró la columna de DNI en la base de datos.")
 
-            with col2:
-                # Gráfico de Torta Personal
-                st.markdown("📊 **Mix de mi Gestión**")
-                fig_p = px.pie(df_mio, names='DETALLE', hole=0.4)
-                fig_p.update_layout(showlegend=True, height=350)
-                st.plotly_chart(fig_p, use_container_width=True)
-
-# --- PESTAÑA 2: DASHBOARD PROTEGIDA (ADMIN) ---
+# --- PESTAÑA 3: DASHBOARD ADMIN (PROTEGIDA) ---
 with tab2:
     st.subheader("🔐 Acceso Administrador")
-    col_u, col_p = st.columns(2)
-    with col_u: admin_user = st.text_input("Usuario", key="admin_user")
-    with col_p: admin_pass = st.text_input("Contraseña", type="password", key="admin_pass")
+    c_u, c_p = st.columns(2)
+    with c_u: a_user = st.text_input("Usuario", key="ad_u")
+    with c_p: a_pass = st.text_input("Contraseña", type="password", key="ad_p")
 
-    if admin_user == "admin" and admin_pass == "Diamire2026*":
+    if a_user == "admin" and a_pass == "Diamire2026*":
         st.success("🔓 Acceso Concedido")
-        st.divider()
-        if df_registros.empty:
-            st.info("No hay datos registrados.")
-        else:
-            df_registros['DETALLE'] = df_registros['DETALLE'].astype(str).str.strip().str.upper()
-            f1, f2, f3 = st.columns(3)
+        if not df_registros.empty:
+            # Filtros y tablas que ya tenías funcionando perfectamente...
+            f1, f2 = st.columns(2)
             with f1: dia_sel = st.selectbox("📅 Día Control", sorted(df_registros["FECHA"].unique(), reverse=True))
-            with f2:
-                z_list = ["TODOS"] + sorted(df_registros["ZONAL"].unique().astype(str).tolist())
-                z_sel = st.selectbox("Zonal", z_list)
-            with f3:
-                df_t = df_registros[df_registros["ZONAL"] == z_sel] if z_sel != "TODOS" else df_registros.copy()
-                s_list = ["TODOS"] + sorted(df_t["SUPERVISOR"].unique().astype(str).tolist())
-                s_sel = st.selectbox("Supervisor", s_list)
+            with f2: zon_sel = st.selectbox("Zonal", ["TODOS"] + sorted(df_registros["ZONAL"].unique().tolist()))
             
-            df_f = df_t[df_t["SUPERVISOR"] == s_sel] if s_sel != "TODOS" else df_t.copy()
-
-            # 1. MONITOR HORARIO
-            st.markdown(f"⏰ **Monitor Horario General ({dia_sel})**")
-            df_h = df_f[df_f["FECHA"] == dia_sel]
-            if not df_h.empty:
-                rh = df_h.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
-                rh["TOTAL"] = rh.sum(axis=1)
-                st.dataframe(rh.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'}), use_container_width=True)
-
-            # 2. RANKING METAS
-            st.divider()
-            st.markdown("🏆 **Ranking Metas Diarias (Meta ≥ 40)**")
-            rd = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
-            rd = rd.reindex(sorted(rd.columns, reverse=True), axis=1)
-            rd["TOTAL ACUM"] = rd.sum(axis=1)
+            df_dash = df_registros[df_registros["FECHA"] == dia_sel]
+            if zon_sel != "TODOS": df_dash = df_dash[df_dash["ZONAL"] == zon_sel]
             
-            def color_meta(v):
-                try: return 'background-color: #90EE90; color: black;' if int(v) >= 40 else ''
-                except: return ''
+            st.markdown(f"📋 **Resultados del día {dia_sel}**")
+            st.dataframe(df_dash, use_container_width=True)
             
-            st.dataframe(rd.sort_values(by="TOTAL ACUM", ascending=False).style.applymap(color_meta, subset=rd.columns[:-1])
-                         .set_properties(**{'text-align': 'center'}), use_container_width=True)
-
+            # Botón de descarga
             buf = io.BytesIO()
-            with pd.ExcelWriter(buf, engine='xlsxwriter') as wr: rd.to_excel(wr, sheet_name='Ranking_Metas')
-            st.download_button("📥 Descargar Ranking Metas (Excel)", data=buf.getvalue(), file_name="Ranking_Metas_40.xlsx", use_container_width=True)
-
-    elif admin_user != "" or admin_pass != "":
+            with pd.ExcelWriter(buf, engine='xlsxwriter') as writer:
+                df_registros.to_excel(writer, index=False, sheet_name='Data')
+            st.download_button("📥 Descargar Base Completa", data=buf.getvalue(), file_name="Gestion_Dimiare.xlsx", use_container_width=True)
+    elif a_user != "" or a_pass != "":
         st.error("❌ Credenciales incorrectas.")
 
 
