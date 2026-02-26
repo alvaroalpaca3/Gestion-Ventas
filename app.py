@@ -114,7 +114,7 @@ with tab1:
                 mail = st.text_input("Email *")
                 c_fe = st.text_input("Código FE (13 caracteres) *", max_chars=13)
 
-     if submit:
+         if submit:
             error = False
             # 1. Validaciones de Seguridad y Acceso
             if nom_v == "N/A":
@@ -288,4 +288,5 @@ with tab2:
                 ranking_d.to_excel(writer, sheet_name='Ranking')
             st.download_button("📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
                                file_name=f"Metas_Vendedores.xlsx", use_container_width=True)
+
 
