@@ -70,10 +70,11 @@ st.sidebar.caption("©2026 Todos los derechos reservados")
 st.sidebar.caption("by Dubby System SAC")
 
 # --- 5. CUERPO PRINCIPAL ---
-st.header("📊 REGISTRO DE GESTIÓN DIARIA")
-tab1, tab2 = st.tabs(["📝 REGISTRO", "📊 DASHBOARD"])
+st.header("📊 SISTEMA DE GESTIÓN COMERCIAL")
+# Se añade la pestaña "MI PROGRESO" en medio
+tab1, tab_personal, tab2 = st.tabs(["📝 REGISTRO", "📈 MI PROGRESO", "📊 DASHBOARD ADMIN"])
 
-# --- PESTAÑA 1: FORMULARIO ---
+# --- PESTAÑA 1: FORMULARIO (Mantiene tus validaciones fundamentales) ---
 with tab1:
     st.markdown("#### 📝 INGRESO DE GESTIÓN")
     detalle = st.selectbox("DETALLE DE GESTIÓN *", ["SELECCIONA", "VENTA FIJA", "NO-VENTA", "CLIENTE AGENDADO", "REFERIDO"])
@@ -150,26 +151,62 @@ with tab1:
                     st.rerun()
                 except Exception as e: st.error(f"Error: {e}")
 
-# --- PESTAÑA 2: DASHBOARD PROTEGIDA ---
+# --- PESTAÑA NUEVA: MI PROGRESO (FILTRADA POR DNI LATERAL) ---
+with tab_personal:
+    if nom_v == "N/A":
+        st.warning("👈 Por favor, ingrese su DNI en la barra lateral para ver su progreso.")
+    else:
+        st.subheader(f"📈 Mi Actividad: {nom_v}")
+        
+        # Limpiamos DNI de registros para comparar correctamente
+        df_registros['DNI'] = df_registros['DNI'].astype(str).str.replace("'", "")
+        df_mio = df_registros[df_registros['DNI'] == dni_clean].copy()
+        
+        if df_mio.empty:
+            st.info("Aún no tienes registros en el sistema.")
+        else:
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                # Meta Diaria Personal
+                st.markdown("🏆 **Mis Gestiones por Día (Meta ≥ 40)**")
+                mi_rd = df_mio.pivot_table(index="FECHA", values="DETALLE", aggfunc="count").T
+                
+                def color_meta_p(v):
+                    return 'background-color: #90EE90; color: black;' if v >= 40 else ''
+                
+                st.dataframe(mi_rd.style.applymap(color_meta_p), use_container_width=True)
+                
+                # Monitor Horario Personal (Día actual)
+                hoy = datetime.now(pytz.timezone('America/Lima')).strftime("%d/%m/%Y")
+                st.markdown(f"⏱ **Mi Monitor Horario de Hoy ({hoy})**")
+                df_mio_hoy = df_mio[df_mio['FECHA'] == hoy]
+                if not df_mio_hoy.empty:
+                    mi_rh = df_mio_hoy.pivot_table(index="HORA", values="DETALLE", aggfunc="count").T
+                    st.dataframe(mi_rh, use_container_width=True)
+                else:
+                    st.caption("Sin gestiones registradas hoy.")
+
+            with col2:
+                # Gráfico de Torta Personal
+                st.markdown("📊 **Mix de mi Gestión**")
+                fig_p = px.pie(df_mio, names='DETALLE', hole=0.4)
+                fig_p.update_layout(showlegend=True, height=350)
+                st.plotly_chart(fig_p, use_container_width=True)
+
+# --- PESTAÑA 2: DASHBOARD PROTEGIDA (ADMIN) ---
 with tab2:
     st.subheader("🔐 Acceso Administrador")
     col_u, col_p = st.columns(2)
-    with col_u:
-        admin_user = st.text_input("Usuario", key="admin_user")
-    with col_p:
-        admin_pass = st.text_input("Contraseña", type="password", key="admin_pass")
+    with col_u: admin_user = st.text_input("Usuario", key="admin_user")
+    with col_p: admin_pass = st.text_input("Contraseña", type="password", key="admin_pass")
 
-    # Credencial única de acceso
     if admin_user == "admin" and admin_pass == "Diamire2026*":
         st.success("🔓 Acceso Concedido")
         st.divider()
-
         if df_registros.empty:
             st.info("No hay datos registrados.")
         else:
             df_registros['DETALLE'] = df_registros['DETALLE'].astype(str).str.strip().str.upper()
-            
-            # Filtros
             f1, f2, f3 = st.columns(3)
             with f1: dia_sel = st.selectbox("📅 Día Control", sorted(df_registros["FECHA"].unique(), reverse=True))
             with f2:
@@ -183,14 +220,14 @@ with tab2:
             df_f = df_t[df_t["SUPERVISOR"] == s_sel] if s_sel != "TODOS" else df_t.copy()
 
             # 1. MONITOR HORARIO
-            st.markdown(f"⏰ **Monitor Horario ({dia_sel})**")
+            st.markdown(f"⏰ **Monitor Horario General ({dia_sel})**")
             df_h = df_f[df_f["FECHA"] == dia_sel]
             if not df_h.empty:
                 rh = df_h.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
                 rh["TOTAL"] = rh.sum(axis=1)
                 st.dataframe(rh.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'}), use_container_width=True)
 
-            # 2. RANKING METAS (DESCARGA EXCLUSIVA)
+            # 2. RANKING METAS
             st.divider()
             st.markdown("🏆 **Ranking Metas Diarias (Meta ≥ 40)**")
             rd = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
@@ -204,23 +241,12 @@ with tab2:
             st.dataframe(rd.sort_values(by="TOTAL ACUM", ascending=False).style.applymap(color_meta, subset=rd.columns[:-1])
                          .set_properties(**{'text-align': 'center'}), use_container_width=True)
 
-            # Botón de Descarga del Ranking
             buf = io.BytesIO()
-            with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
-                rd.to_excel(wr, sheet_name='Ranking_Metas')
+            with pd.ExcelWriter(buf, engine='xlsxwriter') as wr: rd.to_excel(wr, sheet_name='Ranking_Metas')
             st.download_button("📥 Descargar Ranking Metas (Excel)", data=buf.getvalue(), file_name="Ranking_Metas_40.xlsx", use_container_width=True)
-
-            # 3. MATRIZ PRODUCTIVIDAD
-            st.divider()
-            st.markdown(f"📋 **Matriz de Productividad ({z_sel})**")
-            tp = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
-            tp["TOTAL"] = tp.sum(axis=1)
-            st.dataframe(tp.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'})
-                         .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
 
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
-    else:
-        st.warning("🔒 Ingrese credenciales de administrador para ver el Dashboard.")
+
 
 
