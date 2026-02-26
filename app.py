@@ -98,7 +98,7 @@ with tab1:
             ca, cb = st.columns(2)
             with ca:
                 n_cl = st.text_input("Nombre Cliente *").upper()
-                d_cl = st.text_input("DNI/RUC Cliente (8-11 dígitos) *", max_chars=11)
+                d_cl = st.text_input("DNI/RUC Cliente (8 dígitos) *", max_chars=8)
                 t_op = st.selectbox("Operación *", ["SELECCIONA", "CAPTACIÓN", "MIGRACIÓN", "COMPLETA TV", "COMPLETA BA", "COMPLETA MT"])
                 prod = st.selectbox("Producto *", ["SELECCIONA", "NAKED", "DUO INT + TV", "DUO BA", "DUO TV", "TRIO"])
                 pil = st.radio("Piloto?", ["NO", "SI"], horizontal=True)
@@ -217,4 +217,5 @@ with tab2:
             with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
                 tp.to_excel(wr, sheet_name='Data')
             st.download_button("📥 Descargar Excel", data=buf.getvalue(), file_name="Productividad.xlsx", use_container_width=True)
+
 
