@@ -209,12 +209,12 @@ with tab_personal:
         else:
             st.error("Error al cargar registros.")
 
-# --- PESTAÑA 3: DASHBOARD (ADMIN) ---
+# --- PESTAÑA 3: DASHBOARD (ADMIN - ALINEACIÓN IZQUIERDA & TABLAS PURAS) ---
 with tab2:
-    st.subheader("🔐 Acceso Administrador")
-    c_u, c_p = st.columns(2)
-    with c_u: admin_user = st.text_input("Usuario", key="ad_u")
-    with c_p: admin_pass = st.text_input("Contraseña", type="password", key="ad_p")
+    st.markdown("##### 🔐 Acceso Administrador")
+    col_adm1, col_adm2 = st.columns(2)
+    with col_adm1: admin_user = st.text_input("Usuario", key="adm_u_final")
+    with col_adm2: admin_pass = st.text_input("Contraseña", type="password", key="adm_p_final")
 
     if admin_user == "admin" and admin_pass == "Diamire2026*":
         st.success("🔓 Acceso Concedido")
@@ -236,42 +236,48 @@ with tab2:
 
             # 1. MONITOR HORARIO
             st.divider()
-            st.markdown(f"⏰ **Monitor Horario ({dia_sel})**")
+            st.markdown("##### **1. Monitor Horario (Día Seleccionado)**")
             df_h = df_f[df_f["FECHA"] == dia_sel]
             if not df_h.empty:
                 rh = df_h.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
                 rh["TOTAL"] = rh.sum(axis=1)
-                st.dataframe(rh.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'}), use_container_width=True)
+                # st.table para asegurar alineación a la izquierda
+                st.table(rh.sort_values(by="TOTAL", ascending=False))
+            else:
+                st.info("No hay datos para esta fecha.")
 
             # 2. RANKING METAS
             st.divider()
-            st.markdown("🏆 **Ranking Metas Diarias (Meta ≥ 40)**")
+            st.markdown("##### **2. Ranking Metas (Meta ≥ 40)**")
             rd = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
             rd = rd.reindex(sorted(rd.columns, reverse=True), axis=1)
             rd["TOTAL ACUM"] = rd.sum(axis=1)
             
-            st.dataframe(rd.sort_values(by="TOTAL ACUM", ascending=False).style.applymap(lambda v: 'background-color: #90EE90; color: black;' if isinstance(v, (int, float)) and v >= 40 else '', subset=rd.columns[:-1])
-                         .set_properties(**{'text-align': 'center'}), use_container_width=True)
+            # Aplicamos color y mostramos como tabla
+            st.table(rd.sort_values(by="TOTAL ACUM", ascending=False).style.applymap(
+                lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', 
+                subset=rd.columns[:-1]
+            ))
 
-            # --- FUNCIONALIDAD DE DESCARGA (RECUPERADA) ---
+            # --- BOTÓN DE DESCARGA (UBICADO AQUÍ SEGÚN TU PEDIDO) ---
             buf = io.BytesIO()
             with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
                 rd.to_excel(wr, sheet_name='Ranking_Metas')
             st.download_button(
                 label="📥 Descargar Ranking Metas (Excel)",
                 data=buf.getvalue(),
-                file_name=f"Ranking_Metas_{dia_sel.replace('/','-')}.xlsx",
+                file_name=f"Ranking_{dia_sel.replace('/','-')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True
             )
 
             # 3. MATRIZ PRODUCTIVIDAD
             st.divider()
-            st.markdown(f"📋 **Matriz de Productividad ({z_sel})**")
+            st.markdown(f"##### **3. Matriz de Productividad ({z_sel})**")
             tp = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
             tp["TOTAL"] = tp.sum(axis=1)
-            st.dataframe(tp.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'})
-                         .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
+            # st.table para mantener la estética uniforme
+            st.table(tp.sort_values(by="TOTAL", ascending=False))
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
