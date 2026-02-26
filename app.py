@@ -284,21 +284,21 @@ with tab2:
             st.markdown(f"📊 **Composición de Gestiones ({zonal_sel} - {sup_sel})**")
 
             if not df_final.empty:
-                # 1. LIMPIEZA CRÍTICA: Quitamos espacios y uniformamos mayúsculas
+                # 1. Limpieza total de los datos antes de contar
                 df_temp_graf = df_final.copy()
                 df_temp_graf['DETALLE'] = df_temp_graf['DETALLE'].astype(str).str.strip().str.upper()
 
-                # 2. Agrupamos sumando las ocurrencias
+                # 2. Conteo agrupado (Aquí es donde los 1 se convertirán en el total real)
                 df_donut = df_temp_graf['DETALLE'].value_counts().reset_index()
                 df_donut.columns = ['Gestión', 'Total']
                 
-                # 3. Calculamos el total real de la suma
-                total_real = int(df_donut['Total'].sum())
+                # 3. Suma total basada EXCLUSIVAMENTE en lo que hay en la gráfica
+                suma_circulo = int(df_donut['Total'].sum())
 
                 import plotly.express as px
                 
-                # 4. Creamos la Dona
-                fig = px.pie(
+                # 4. Construcción de la Dona
+                fig_dona = px.pie(
                     df_donut, 
                     values='Total', 
                     names='Gestión', 
@@ -307,36 +307,31 @@ with tab2:
                     template='plotly_white'
                 )
 
-                # 5. Etiquetas: Cantidad + Porcentaje
-                fig.update_traces(
+                # 5. Etiquetas de Cantidad + Porcentaje
+                fig_dona.update_traces(
                     texttemplate='<b>%{label}</b><br>%{value} uds.<br>%{percent}',
                     textposition='outside',
-                    pull=[0.02] * len(df_donut),
                     marker=dict(line=dict(color='#FFFFFF', width=2))
                 )
 
-                # 6. Texto Central SINCRONIZADO
-                fig.add_annotation(
-                    text=f"TOTAL<br><b>{total_real}</b>",
+                # 6. Texto Central (Usamos color hexadecimal directo para evitar el NameError)
+                fig_dona.add_annotation(
+                    text=f"TOTAL<br><b>{suma_circulo}</b>",
                     showarrow=False,
                     font=dict(size=22, color='#004085'),
                     x=0.5, y=0.5
                 )
 
-                # 7. Ajustes de diseño
-                fig.update_layout(
+                # 7. Layout y Leyenda
+                fig_dona.update_layout(
                     showlegend=True,
                     legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
-                    height=500,
+                    height=520,
                     margin=dict(l=50, r=50, t=30, b=100)
                 )
 
-                st.plotly_chart(fig, use_container_width=True)
+                # 8. Renderizado
+                st.plotly_chart(fig_dona, use_container_width=True)
                 
             else:
-                st.warning("No hay datos para mostrar en la gráfica.")
-                st.plotly_chart(fig, use_container_width=True)
-                
-            else:
-                st.warning("No hay datos para mostrar en la gráfica.")
-
+                st.warning("No hay datos registrados para los filtros seleccionados.")
