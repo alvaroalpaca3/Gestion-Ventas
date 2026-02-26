@@ -185,84 +185,86 @@ with tab1:
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error al guardar: {e}")
-                
+
 with tab2:
     st.markdown("##### 📊 DASHBOARD OPERATIVO")
     
-    # --- TRUCO MAESTRO DE CSS PARA CENTRADO ABSOLUTO ---
+    # --- CSS PARA CENTRADO ---
     st.markdown("""
         <style>
-            /* Centrar cabeceras */
             .stDataFrame th {text-align: center !important;}
-            /* Centrar contenido de celdas */
             .stDataFrame td {text-align: center !important;}
-            /* Forzar alineación en el nuevo componente de datos de Streamlit */
-            [data-testid="stTable"] {text-align: center !important;}
-            div[data-testid="stDataFrame"] div[class^="st-"] {text-align: center !important;}
         </style>
     """, unsafe_allow_html=True)
     
     if df_registros.empty:
         st.info("Aún no hay datos registrados.")
     else:
+        # 1. Limpieza preventiva de datos para asegurar que sume todo
+        df_registros['DETALLE'] = df_registros['DETALLE'].astype(str).str.strip().str.upper()
+
         # --- FILTROS ---
         c_f1, c_f2, c_f3 = st.columns(3)
         with c_f1:
             dias_unicos = sorted(df_registros["FECHA"].unique().tolist(), reverse=True)
             dia_sel = st.selectbox("📅 Día Control Horario", dias_unicos)
         with c_f2:
-            zonales = ["TODOS"] + sorted(df_registros["ZONAL"].unique().tolist())
+            zonales = ["TODOS"] + sorted(df_registros["ZONAL"].unique().astype(str).tolist())
             zonal_sel = st.selectbox("Zonal (Histórico)", zonales)
         with c_f3:
-            df_t = df_registros if zonal_sel == "TODOS" else df_registros[df_registros["ZONAL"] == zonal_sel]
-            supervisores = ["TODOS"] + sorted(df_t["SUPERVISOR"].unique().tolist())
+            # Filtrado dinámico
+            df_temp = df_registros.copy()
+            if zonal_sel != "TODOS":
+                df_temp = df_temp[df_temp["ZONAL"] == zonal_sel]
+            
+            supervisores = ["TODOS"] + sorted(df_temp["SUPERVISOR"].unique().astype(str).tolist())
             sup_sel = st.selectbox("Supervisor (Histórico)", supervisores)
 
-        # Color unificado para Totales (Azul bajo/Celeste)
-        color_celeste = '#CCE5FF'
-        texto_azul_oscuro = '#004085'
+        # Aplicar filtros finales al DataFrame que usaremos
+        df_final = df_temp.copy()
+        if sup_sel != "TODOS":
+            df_final = df_final[df_final["SUPERVISOR"] == sup_sel]
 
-        # --- SECCIÓN 1: MONITOR HORARIO ---
-        # ... (filtros previos) ...
+        # --- SECCIÓN 1: MONITOR HORARIO (HOY) ---
+        st.divider()
+        st.markdown(f"⏰ **Actividad por Horas ({dia_sel})**")
+        df_hoy = df_final[df_final["FECHA"] == dia_sel]
+        
         if not df_hoy.empty:
-            # IMPORTANTE: Usamos 'FECHA' o cualquier columna que siempre tenga datos para contar (aggfunc='count')
+            # Contamos CUALQUIER gestión en DETALLE (Venta, No-Venta, Referido)
             ranking_h = df_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
             ranking_h["TOTAL"] = ranking_h.sum(axis=1)
             ranking_h = ranking_h.sort_values(by="TOTAL", ascending=False)
             
-            # Formateamos a string para el centrado que ya logramos
-            ranking_h_str = ranking_h.astype(str).replace('0', '-') 
-
             st.dataframe(
-                ranking_h_str.style.set_properties(**{'text-align': 'center'})
+                ranking_h.astype(str).replace('0', '-').style.set_properties(**{'text-align': 'center'})
                 .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}])
                 .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'color': '#004085', 'font-weight': 'bold'}),
                 use_container_width=True
             )
 
-        # --- SECCIÓN 2: RANKING DE METAS (Aquí es donde se ven los 40) ---
-        if not df_acc.empty:
-            # Aquí nos aseguramos de que cuente TODAS las gestiones (Venta, No-Venta y Referido)
-            ranking_d = df_acc.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
+        # --- SECCIÓN 2: RANKING DE METAS (HISTÓRICO) ---
+        st.divider()
+        st.markdown("🏆 **Ranking de Metas Diarias (Meta: ≥ 40)**")
+        
+        if not df_final.empty:
+            ranking_d = df_final.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
+            # Ordenar fechas de más reciente a más antigua
             ranking_d = ranking_d.reindex(sorted(ranking_d.columns, reverse=True), axis=1)
             
-            cols_fechas = ranking_d.columns.tolist() 
+            cols_fechas = ranking_d.columns.tolist()
             ranking_d["TOTAL ACUMULADO"] = ranking_d.sum(axis=1)
             ranking_d = ranking_d.sort_values(by="TOTAL ACUMULADO", ascending=False)
 
-            # Pasamos a texto para mantener el centrado simétrico
-            ranking_d_str = ranking_d.astype(str)
-
             def style_metas(val):
                 try:
-                    # Si el conteo (ahora incluyendo referidos) es >= 40, se pone verde
-                    if int(val) >= 40: 
+                    if int(val) >= 40:
                         return 'background-color: #90EE90; color: #004D00; font-weight: bold; text-align: center;'
                 except: pass
                 return 'text-align: center;'
 
             st.dataframe(
-                ranking_d_str.style.set_properties(**{'text-align': 'center'})
+                ranking_d.astype(str).style.set_properties(**{'text-align': 'center'})
                 .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}])
                 .applymap(style_metas, subset=cols_fechas)
                 .set_properties(subset=['TOTAL ACUMULADO'], **{'background-color': '#CCE5FF', 'color': '#004085', 'font-weight': 'bold'})
@@ -277,6 +279,46 @@ with tab2:
             st.download_button("📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
                                file_name=f"Metas_Vendedores.xlsx", use_container_width=True)
 
+# --- SECCIÓN 3: ANÁLISIS POR TIPO DE GESTIÓN (GRÁFICA) ---
+            st.divider()
+            st.markdown(f"📈 **Distribución de Gestiones - Filtro Aplicado**")
+
+            if not df_final.empty:
+                # Agrupamos por el campo DETALLE para la gráfica
+                df_grafico = df_final['DETALLE'].value_counts().reset_index()
+                df_grafico.columns = ['Tipo de Gestión', 'Cantidad']
+                
+                # Ordenar de mayor a menor
+                df_grafico = df_grafico.sort_values(by='Cantidad', ascending=True)
+
+                import plotly.express as px
+                
+                # Crear la gráfica de barras
+                fig = px.bar(
+                    df_grafico, 
+                    x='Cantidad', 
+                    y='Tipo de Gestión',
+                    orientation='h',
+                    text='Cantidad',
+                    color='Tipo de Gestión',
+                    color_discrete_sequence=px.colors.qualitative.Pastel,
+                    template='plotly_white'
+                )
+
+                # Ajustes estéticos
+                fig.update_traces(textposition='outside', font=dict(size=12))
+                fig.update_layout(
+                    showlegend=False,
+                    xaxis_title="Número de Gestiones",
+                    yaxis_title=None,
+                    height=350,
+                    margin=dict(l=20, r=20, t=30, b=20)
+                )
+
+                # Mostrar la gráfica
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("No hay datos suficientes para generar la gráfica con los filtros actuales.")
 
 
 
