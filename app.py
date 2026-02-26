@@ -279,69 +279,61 @@ with tab2:
             st.download_button("📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
                                file_name=f"Metas_Vendedores.xlsx", use_container_width=True)
 
-# --- SECCIÓN 3: CONSOLIDADO TÉCNICO Y VISUAL ---
+# --- SECCIÓN 3: CONSOLIDADO POR VENDEDOR Y TIPO DE GESTIÓN ---
             st.divider()
-            st.markdown(f"📋 **Resumen de Gestiones ({zonal_sel} - {sup_sel})**")
+            st.markdown(f"📋 **Matriz de Productividad ({zonal_sel} - {sup_sel})**")
 
             if not df_final.empty:
-                # 1. CREACIÓN DE LA TABLA RESUMEN (LA FUENTE DE LA VERDAD)
-                df_counts = df_final.copy()
-                df_counts['DETALLE'] = df_counts['DETALLE'].astype(str).str.strip().str.upper()
-                
-                # Agrupamos y contamos manualmente
-                resumen_tabla = df_counts['DETALLE'].value_counts().reset_index()
-                resumen_tabla.columns = ['TIPO DE GESTIÓN', 'CANTIDAD']
-                
-                # Calculamos el Total para el centro de la dona
-                total_absoluto = int(resumen_tabla['CANTIDAD'].sum())
+                # 1. Preparación de datos: Limpieza de espacios y mayúsculas
+                df_matriz = df_final.copy()
+                df_matriz['DETALLE'] = df_matriz['DETALLE'].astype(str).str.strip().str.upper()
+                df_matriz['NOMBRE VENDEDOR'] = df_matriz['NOMBRE VENDEDOR'].astype(str).str.strip().str.upper()
 
-                # 2. MOSTRAR LA TABLA PRIMERO (Para validación visual)
+                # 2. Creamos la Tabla Dinámica (Pivot Table)
+                # Filas: Vendedores | Columnas: Tipos de Gestión (Venta, No-Venta, Referido)
+                tabla_prod = df_matriz.pivot_table(
+                    index="NOMBRE VENDEDOR", 
+                    columns="DETALLE", 
+                    values="FECHA", # Usamos cualquier columna para contar
+                    aggfunc="count", 
+                    fill_value=0
+                )
+
+                # 3. Calculamos el Total Acumulado por Vendedor (La meta de 40)
+                tabla_prod["TOTAL GESTIONES"] = tabla_prod.sum(axis=1)
+                
+                # Ordenamos para que los que más gestionan salgan arriba
+                tabla_prod = tabla_prod.sort_values(by="TOTAL GESTIONES", ascending=False)
+
+                # 4. Estilo de la Tabla
+                def resaltar_meta(val):
+                    try:
+                        if int(val) >= 40:
+                            return 'background-color: #90EE90; color: #004D00; font-weight: bold; text-align: center;'
+                    except: pass
+                    return 'text-align: center;'
+
+                # Mostramos la tabla con diseño profesional
                 st.dataframe(
-                    resumen_tabla.style.set_properties(**{'text-align': 'center'})
+                    tabla_prod.style.set_properties(**{'text-align': 'center'})
                     .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}])
-                    .set_properties(subset=['CANTIDAD'], **{'background-color': '#CCE5FF', 'color': '#004085', 'font-weight': 'bold'}),
-                    use_container_width=True,
-                    hide_index=True
+                    .applymap(resaltar_meta, subset=['TOTAL GESTIONES']) # Resalta en verde si llega a 40
+                    .set_properties(subset=['TOTAL GESTIONES'], **{'background-color': '#CCE5FF', 'color': '#004085', 'font-weight': 'bold'}),
+                    use_container_width=True
                 )
 
-                # 3. CREACIÓN DE LA GRÁFICA (Usando explícitamente la tabla anterior)
-                import plotly.express as px
+                # 5. Resumen rápido en métricas
+                c1, c2, c3 = st.columns(3)
+                total_global = tabla_prod["TOTAL GESTIONES"].sum()
+                vendedor_top = tabla_prod.index[0]
                 
-                fig_dona = px.pie(
-                    resumen_tabla, 
-                    values='CANTIDAD', # AQUÍ ESTÁ EL TRUCO: obligamos a usar el número sumado
-                    names='TIPO DE GESTIÓN', 
-                    hole=0.5,
-                    color_discrete_sequence=px.colors.qualitative.Pastel,
-                    template='plotly_white'
-                )
-
-                # 4. CONFIGURACIÓN DE ETIQUETAS (Cantidad + Porcentaje)
-                fig_dona.update_traces(
-                    textinfo='value+percent', # Muestra el número real (8) y el %
-                    texttemplate='<b>%{label}</b><br>%{value} uds.<br>%{percent}',
-                    textposition='outside',
-                    marker=dict(line=dict(color='#FFFFFF', width=2))
-                )
-
-                # 5. TOTAL EN EL CENTRO
-                fig_dona.add_annotation(
-                    text=f"TOTAL<br><b>{total_absoluto}</b>",
-                    showarrow=False,
-                    font=dict(size=20, color='#004085'),
-                    x=0.5, y=0.5
-                )
-
-                # 6. AJUSTES DE DISEÑO
-                fig_dona.update_layout(
-                    showlegend=True,
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
-                    height=500,
-                    margin=dict(l=50, r=50, t=20, b=100)
-                )
-
-                # 7. RENDERIZADO DE LA GRÁFICA
-                st.plotly_chart(fig_dona, use_container_width=True)
+                with c1:
+                    st.metric("Total Global", f"{total_global} uds.")
+                with c2:
+                    st.metric("Vendedor Top", vendedor_top)
+                with c3:
+                    st.metric("Promedio x Vendedor", f"{round(total_global/len(tabla_prod), 1)}")
 
             else:
-                st.warning("No hay datos para mostrar con los filtros actuales.")
+                st.warning("No hay datos para generar la matriz con los filtros actuales.")
+
