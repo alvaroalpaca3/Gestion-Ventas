@@ -39,7 +39,6 @@ def cargar_datos():
     try:
         ws_reg = doc.sheet1
         df_reg = pd.DataFrame(ws_reg.get_all_records())
-        # Normalizamos encabezados a mayúsculas y sin espacios
         df_reg.columns = [str(c).strip().upper() for c in df_reg.columns]
     except: df_reg = pd.DataFrame()
         
@@ -51,7 +50,6 @@ if "form_key" not in st.session_state: st.session_state.form_key = 0
 
 # --- 4. BARRA LATERAL ---
 st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
-
 st.sidebar.title("👤 Acceso Vendedor")
 dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=8)
 dni_clean = "".join(filter(str.isdigit, dni_input)).zfill(8)
@@ -71,10 +69,10 @@ st.sidebar.caption("©2026 Todos los derechos reservados")
 st.sidebar.caption("by Dubby System SAC")
 
 # --- 5. CUERPO PRINCIPAL ---
-st.header("📊 SISTEMA DE GESTIÓN COMERCIAL")
-tab1, tab_personal, tab2 = st.tabs(["📝 REGISTRO", "📈 MI PROGRESO", "📊 DASHBOARD ADMIN"])
+st.header("📊 REGISTRO DE GESTIÓN DIARIA")
+tab1, tab_personal, tab2 = st.tabs(["📝 REGISTRO", "📈 MI PROGRESO", "📊 DASHBOARD"])
 
-# --- PESTAÑA 1: REGISTRO (CON TODAS TUS VALIDACIONES) ---
+# --- PESTAÑA 1: FORMULARIO (TUS REGLAS ORIGINALES) ---
 with tab1:
     st.markdown("#### 📝 INGRESO DE GESTIÓN")
     detalle = st.selectbox("DETALLE DE GESTIÓN *", ["SELECCIONA", "VENTA FIJA", "NO-VENTA", "CLIENTE AGENDADO", "REFERIDO"])
@@ -94,7 +92,7 @@ with tab1:
             ca, cb = st.columns(2)
             with ca:
                 n_cl = st.text_input("Nombre Cliente *").upper()
-                d_cl = st.text_input("DNI Cliente *", max_chars=8)
+                d_cl = st.text_input("DNI/RUC Cliente *", max_chars=8)
                 t_op = st.selectbox("Operación *", ["SELECCIONA", "CAPTACIÓN", "MIGRACIÓN", "COMPLETA TV", "COMPLETA BA", "COMPLETA MT"])
                 prod = st.selectbox("Producto *", ["SELECCIONA", "NAKED", "DUO INT + TV", "DUO BA", "DUO TV", "TRIO"])
                 pil = st.radio("Piloto?", ["NO", "SI"], horizontal=True)
@@ -120,7 +118,7 @@ with tab1:
                     st.error("❌ Error: Todos los campos marcados con (*) son obligatorios.")
                     error = True
                 elif len(d_cl) < 8:
-                    st.error("❌ Error: El DNI debe tener 8 dígitos.")
+                    st.error("❌ Error: El DNI/RUC debe tener al menos 8 dígitos.")
                     error = True
                 elif len(c1) != 9 or not c1.isdigit():
                     st.error("❌ Error: El celular debe tener 9 dígitos numéricos.")
@@ -149,66 +147,92 @@ with tab1:
                     time.sleep(1)
                     st.session_state.form_key += 1
                     st.rerun()
-                except Exception as e: st.error(f"Error al guardar: {e}")
+                except Exception as e: st.error(f"Error: {e}")
 
-# --- PESTAÑA 2: MI PROGRESO (CON CORRECCIÓN DE KEYERROR) ---
+# --- PESTAÑA 2: MI PROGRESO (SOLO DEL VENDEDOR) ---
 with tab_personal:
     if nom_v == "N/A":
-        st.warning("👈 Ingrese su DNI en la barra lateral para ver su actividad personal.")
+        st.warning("👈 Ingrese su DNI en la barra lateral para ver su progreso.")
     else:
-        st.subheader(f"📈 Resumen: {nom_v}")
-        
+        st.subheader(f"📈 Mi Actividad: {nom_v}")
         if not df_registros.empty:
-            # Corrección del Error: Buscamos la columna de DNI de forma segura
-            col_dni_busqueda = [c for c in df_registros.columns if 'DNI' in c and 'CLIENTE' not in c]
-            if col_dni_busqueda:
-                col_real = col_dni_busqueda[0]
-                df_registros[col_real] = df_registros[col_real].astype(str).str.replace("'", "").str.zfill(8)
-                df_mio = df_registros[df_registros[col_real] == dni_clean].copy()
-                
-                if df_mio.empty:
-                    st.info("No se encontraron registros previos con este DNI.")
-                else:
-                    c_p1, c_p2 = st.columns([2, 1])
-                    with c1:
-                        st.markdown("🏆 **Gestiones por Fecha (Meta ≥ 40)**")
-                        resumen_dias = df_mio.groupby("FECHA").size().to_frame("TOTAL")
-                        st.dataframe(resumen_dias.T.style.applymap(lambda v: 'background-color: #90EE90;' if v >= 40 else ''), use_container_width=True)
-                        
-                        st.markdown("📊 **Mix de Gestión Personal**")
-                        fig_mio = px.pie(df_mio, names='DETALLE', hole=0.4)
-                        st.plotly_chart(fig_mio, use_container_width=True)
+            # Solución al KeyError: Buscamos la columna DNI dinámicamente
+            col_dni = [c for c in df_registros.columns if "DNI" in c and "CLIENTE" not in c][0]
+            df_registros[col_dni] = df_registros[col_dni].astype(str).str.replace("'", "")
+            df_mio = df_registros[df_registros[col_dni] == dni_clean].copy()
+            
+            if df_mio.empty:
+                st.info("No tienes registros guardados aún.")
             else:
-                st.error("No se encontró la columna de DNI en la base de datos.")
+                st.markdown("🏆 **Resumen por Día (Meta ≥ 40)**")
+                rd_m = df_mio.pivot_table(index="FECHA", values="DETALLE", aggfunc="count").T
+                st.dataframe(rd_m.style.applymap(lambda v: 'background-color: #90EE90;' if v >= 40 else ''), use_container_width=True)
+                
+                fig_m = px.pie(df_mio, names='DETALLE', hole=0.4, title="Mix Personal de Gestión")
+                st.plotly_chart(fig_m, use_container_width=True)
 
-# --- PESTAÑA 3: DASHBOARD ADMIN (PROTEGIDA) ---
+# --- PESTAÑA 3: DASHBOARD (TU LÓGICA ORIGINAL) ---
 with tab2:
     st.subheader("🔐 Acceso Administrador")
-    c_u, c_p = st.columns(2)
-    with c_u: a_user = st.text_input("Usuario", key="ad_u")
-    with c_p: a_pass = st.text_input("Contraseña", type="password", key="ad_p")
+    col_u, col_p = st.columns(2)
+    with col_u: admin_user = st.text_input("Usuario", key="admin_u")
+    with col_p: admin_pass = st.text_input("Contraseña", type="password", key="admin_p")
 
-    if a_user == "admin" and a_pass == "Diamire2026*":
+    if admin_user == "admin" and admin_pass == "Diamire2026*":
         st.success("🔓 Acceso Concedido")
-        if not df_registros.empty:
-            # Filtros y tablas que ya tenías funcionando perfectamente...
-            f1, f2 = st.columns(2)
+        if df_registros.empty:
+            st.info("No hay datos registrados.")
+        else:
+            df_registros['DETALLE'] = df_registros['DETALLE'].astype(str).str.strip().str.upper()
+            
+            # FILTROS ORIGINALES
+            f1, f2, f3 = st.columns(3)
             with f1: dia_sel = st.selectbox("📅 Día Control", sorted(df_registros["FECHA"].unique(), reverse=True))
-            with f2: zon_sel = st.selectbox("Zonal", ["TODOS"] + sorted(df_registros["ZONAL"].unique().tolist()))
+            with f2:
+                z_list = ["TODOS"] + sorted(df_registros["ZONAL"].unique().astype(str).tolist())
+                z_sel = st.selectbox("Zonal", z_list)
+            with f3:
+                df_t = df_registros[df_registros["ZONAL"] == z_sel] if z_sel != "TODOS" else df_registros.copy()
+                s_list = ["TODOS"] + sorted(df_t["SUPERVISOR"].unique().astype(str).tolist())
+                s_sel = st.selectbox("Supervisor", s_list)
             
-            df_dash = df_registros[df_registros["FECHA"] == dia_sel]
-            if zon_sel != "TODOS": df_dash = df_dash[df_dash["ZONAL"] == zon_sel]
+            df_f = df_t[df_t["SUPERVISOR"] == s_sel] if s_sel != "TODOS" else df_t.copy()
+
+            # 1. MONITOR HORARIO ORIGINAL
+            st.divider()
+            st.markdown(f"⏰ **Monitor Horario ({dia_sel})**")
+            df_h = df_f[df_f["FECHA"] == dia_sel]
+            if not df_h.empty:
+                rh = df_h.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
+                rh["TOTAL"] = rh.sum(axis=1)
+                st.dataframe(rh.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'}), use_container_width=True)
+
+            # 2. RANKING METAS ORIGINAL
+            st.divider()
+            st.markdown("🏆 **Ranking Metas Diarias (Meta ≥ 40)**")
+            rd = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
+            rd = rd.reindex(sorted(rd.columns, reverse=True), axis=1)
+            rd["TOTAL ACUM"] = rd.sum(axis=1)
             
-            st.markdown(f"📋 **Resultados del día {dia_sel}**")
-            st.dataframe(df_dash, use_container_width=True)
+            def color_meta(v):
+                try: return 'background-color: #90EE90; color: black;' if int(v) >= 40 else ''
+                except: return ''
             
-            # Botón de descarga
+            st.dataframe(rd.sort_values(by="TOTAL ACUM", ascending=False).style.applymap(color_meta, subset=rd.columns[:-1])
+                         .set_properties(**{'text-align': 'center'}), use_container_width=True)
+
+            # BOTÓN DE DESCARGA ORIGINAL
             buf = io.BytesIO()
-            with pd.ExcelWriter(buf, engine='xlsxwriter') as writer:
-                df_registros.to_excel(writer, index=False, sheet_name='Data')
-            st.download_button("📥 Descargar Base Completa", data=buf.getvalue(), file_name="Gestion_Dimiare.xlsx", use_container_width=True)
-    elif a_user != "" or a_pass != "":
+            with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
+                rd.to_excel(wr, sheet_name='Ranking_Metas')
+            st.download_button("📥 Descargar Ranking Metas (Excel)", data=buf.getvalue(), file_name="Ranking_Metas_40.xlsx", use_container_width=True)
+
+            # 3. MATRIZ PRODUCTIVIDAD ORIGINAL
+            st.divider()
+            st.markdown(f"📋 **Matriz de Productividad ({z_sel})**")
+            tp = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
+            tp["TOTAL"] = tp.sum(axis=1)
+            st.dataframe(tp.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'})
+                         .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
+    elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
-
-
-
