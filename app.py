@@ -66,7 +66,7 @@ else:
     nom_v = sup_v = zon_v = "N/A"
 
 st.sidebar.write("")
-st.sidebar.caption("©2026 Todos los derechos reservados by Dubby System SAC")
+st.sidebar.caption("©2026 by Dubby System SA, Todos los derechos reservados")
 
 
 # --- 5. CUERPO PRINCIPAL ---
@@ -272,5 +272,6 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
