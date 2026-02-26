@@ -250,7 +250,7 @@ with tab2:
                 }).set_table_styles([
                     {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#F0F2F6')]}
                 ]).applymap(style_winner, subset=cols_fechas)
-                .set_properties(subset=['TOTAL ACUMULADO'], **{'background-color': '#CCE5FF', 'color': 'black', 'font-weight': 'bold'})
+                .set_properties(subset=['TOTAL ACUMULADO'], **{'background-color': '#1E90FF', 'color': 'white', 'font-weight': 'bold'})
                 , use_container_width=True
             )
 
@@ -270,6 +270,7 @@ with tab2:
                 )
             except Exception as e:
                 st.error(f"Error al generar Excel: Asegúrate de tener 'xlsxwriter' instalado.")
+
 
 
 
