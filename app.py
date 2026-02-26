@@ -179,48 +179,39 @@ with tab2:
     if df_registros.empty:
         st.info("Aún no hay datos registrados.")
     else:
-        # --- FILTROS INDEPENDIENTES ---
-        st.markdown("🔍 **Configuración de Vista**")
+        # --- FILTROS ---
         c_f1, c_f2, c_f3 = st.columns(3)
-        
         with c_f1:
-            # Este filtro SOLO afecta al monitor de horas de hoy
             dias_unicos = sorted(df_registros["FECHA"].unique().tolist(), reverse=True)
-            dia_sel = st.selectbox("📅 Día para Control Horario", dias_unicos)
-        
+            dia_sel = st.selectbox("📅 Día Control Horario", dias_unicos)
         with c_f2:
-            # Filtro para el Ranking Acumulado/Histórico
             zonales = ["TODOS"] + sorted(df_registros["ZONAL"].unique().tolist())
             zonal_sel = st.selectbox("Zonal (Histórico)", zonales)
-            
         with c_f3:
-            # Filtro para el Ranking Acumulado/Histórico
             df_t = df_registros if zonal_sel == "TODOS" else df_registros[df_registros["ZONAL"] == zonal_sel]
             supervisores = ["TODOS"] + sorted(df_t["SUPERVISOR"].unique().tolist())
             sup_sel = st.selectbox("Supervisor (Histórico)", supervisores)
 
-       # --- SECCIÓN 1: MONITOR HORARIO (CENTRADO) ---
+        # --- SECCIÓN 1: MONITOR HORARIO (CENTRADO) ---
         st.divider()
-        st.markdown(f"⏰ **Actividad por Horas - {dia_sel}**")
+        st.markdown(f"⏰ **Actividad por Horas ({dia_sel})**")
         df_hoy = df_registros[df_registros["FECHA"] == dia_sel]
         
         if not df_hoy.empty:
             ranking_h = df_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
             ranking_h["TOTAL"] = ranking_h.sum(axis=1)
             ranking_h = ranking_h.sort_values(by="TOTAL", ascending=False)
-
-            # Estilo: Centrado y Gradiente en el Total
+            
+            # Estilo centrado y decorativo
             st.dataframe(
                 ranking_h.style.set_properties(**{'text-align': 'center'})
-                .set_table_styles([dict(selector='th', props=[('text-align', 'center')])])
-                .background_gradient(cmap='Blues', subset=['TOTAL']), 
+                .background_gradient(cmap='Blues', subset=['TOTAL']),
                 use_container_width=True
             )
 
-        # --- SECCIÓN 2: RANKING ACUMULADO (CENTRADO + TOTAL DISTINTIVO) ---
+        # --- SECCIÓN 2: RANKING DE METAS (CENTRADO + TOTAL AZUL) ---
         st.divider()
         st.markdown("🏆 **Ranking de Metas Diarias (Meta: ≥ 40)**")
-        
         df_acc = df_registros.copy()
         if zonal_sel != "TODOS": df_acc = df_acc[df_acc["ZONAL"] == zonal_sel]
         if sup_sel != "TODOS": df_acc = df_acc[df_acc["SUPERVISOR"] == sup_sel]
@@ -229,32 +220,35 @@ with tab2:
             ranking_d = df_acc.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
             ranking_d = ranking_d.reindex(sorted(ranking_d.columns, reverse=True), axis=1)
             
-            columnas_fechas = ranking_d.columns.tolist() # Solo fechas
-            ranking_d["TOTAL PERIODO"] = ranking_d.sum(axis=1)
-            ranking_d = ranking_d.sort_values(by="TOTAL PERIODO", ascending=False)
+            cols_fechas = ranking_d.columns.tolist() # Guardamos fechas antes de crear el Total
+            ranking_d["TOTAL ACUMULADO"] = ranking_d.sum(axis=1)
+            ranking_d = ranking_d.sort_values(by="TOTAL ACUMULADO", ascending=False)
 
-            # Funciones de Estilo
-            def style_meta(val):
+            # Lógica de color meta >= 40
+            def style_winner(val):
                 try:
                     if float(val) >= 40: return 'background-color: #90EE90; color: #004D00; font-weight: bold;'
                 except: pass
                 return ''
 
-            # Aplicamos: Centrado general + Verde en fechas + Azul en Total
+            # Mostramos tabla con Scroll, Centrado y Colores Distintivos
             st.dataframe(
                 ranking_d.style.set_properties(**{'text-align': 'center'})
-                .set_table_styles([dict(selector='th', props=[('text-align', 'center')])])
-                .applymap(style_meta, subset=columnas_fechas)
-                .set_properties(subset=['TOTAL PERIODO'], **{'background-color': '#CCE5FF', 'color': '#004085', 'font-weight': bold})
+                .applymap(style_winner, subset=cols_fechas) # Verde solo en días
+                .set_properties(subset=['TOTAL ACUMULADO'], **{'background-color': '#CCE5FF', 'color': '#004085'}) # Azul en Total
                 , use_container_width=True
             )
-            
-            # --- BOTÓN DE DESCARGA ---
+
+            # --- BOTÓN EXCEL ---
             import io
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                ranking_d.to_excel(writer, sheet_name='Ranking_Dimiare')
+                ranking_d.to_excel(writer, sheet_name='Ranking')
+            
+            st.download_button("📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
+                               file_name=f"Metas_{zonal_sel}.xlsx", use_container_width=True)
             
             st.download_button(label="📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
                                file_name=f"Reporte_Metas_{dia_sel.replace('/','-')}.xlsx",
                                mime="application/vnd.ms-excel", use_container_width=True)
+
