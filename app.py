@@ -284,16 +284,20 @@ with tab2:
             st.markdown(f"📊 **Composición de Gestiones ({zonal_sel} - {sup_sel})**")
 
             if not df_final.empty:
-                # 1. Agrupamos y contamos SOLO los datos filtrados
-                df_donut = df_final['DETALLE'].value_counts().reset_index()
+                # 1. LIMPIEZA CRÍTICA: Quitamos espacios y uniformamos mayúsculas
+                df_temp_graf = df_final.copy()
+                df_temp_graf['DETALLE'] = df_temp_graf['DETALLE'].astype(str).str.strip().str.upper()
+
+                # 2. Agrupamos sumando las ocurrencias
+                df_donut = df_temp_graf['DETALLE'].value_counts().reset_index()
                 df_donut.columns = ['Gestión', 'Total']
                 
-                # RECALCULAMOS EL TOTAL basado solo en lo que se va a graficar
+                # 3. Calculamos el total real de la suma
                 total_real = int(df_donut['Total'].sum())
 
                 import plotly.express as px
                 
-                # 2. Creamos la Dona
+                # 4. Creamos la Dona
                 fig = px.pie(
                     df_donut, 
                     values='Total', 
@@ -303,7 +307,7 @@ with tab2:
                     template='plotly_white'
                 )
 
-                # 3. Etiquetas: Cantidad + Porcentaje
+                # 5. Etiquetas: Cantidad + Porcentaje
                 fig.update_traces(
                     texttemplate='<b>%{label}</b><br>%{value} uds.<br>%{percent}',
                     textposition='outside',
@@ -311,15 +315,15 @@ with tab2:
                     marker=dict(line=dict(color='#FFFFFF', width=2))
                 )
 
-                # 4. Texto Central SINCRONIZADO
+                # 6. Texto Central SINCRONIZADO
                 fig.add_annotation(
-                    text=f"TOTAL<br><b>{total_real}</b>", # Usamos total_real aquí
+                    text=f"TOTAL<br><b>{total_real}</b>",
                     showarrow=False,
                     font=dict(size=22, color='#004085'),
                     x=0.5, y=0.5
                 )
 
-                # 5. Ajustes de diseño
+                # 7. Ajustes de diseño
                 fig.update_layout(
                     showlegend=True,
                     legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
@@ -331,3 +335,8 @@ with tab2:
                 
             else:
                 st.warning("No hay datos para mostrar en la gráfica.")
+                st.plotly_chart(fig, use_container_width=True)
+                
+            else:
+                st.warning("No hay datos para mostrar en la gráfica.")
+
