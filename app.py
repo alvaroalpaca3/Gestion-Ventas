@@ -114,11 +114,9 @@ with tab1:
                 mail = st.text_input("Email *")
                 c_fe = st.text_input("Código FE (13 caracteres) *", max_chars=13)
 
-        submit = st.form_submit_button("💾 GUARDAR GESTIÓN", use_container_width=True)
-
-        if submit:
+     if submit:
             error = False
-            # Validaciones de Seguridad y Acceso
+            # 1. Validaciones de Seguridad y Acceso
             if nom_v == "N/A":
                 st.error("❌ Acceso denegado: Ingrese su DNI en la barra lateral.")
                 error = True
@@ -126,16 +124,16 @@ with tab1:
                 st.error("❌ Debe seleccionar un tipo de gestión.")
                 error = True
             
-            # Validación específica para VENTA FIJA / AGENDADO
+            # 2. Validación específica para VENTA FIJA / AGENDADO
             elif detalle in ["VENTA FIJA", "CLIENTE AGENDADO"]:
                 if not n_cl.strip() or not dir_ins.strip() or not mail.strip():
                     st.error("❌ Los campos Nombre, Dirección y Email no pueden estar vacíos.")
                     error = True
                 elif len(d_cl) != 8 or not d_cl.isdigit():
-                    st.error("❌ El DNI debe ser de 8 dígitos numéricos.")
+                    st.error("❌ El DNI del cliente debe ser de 8 dígitos numéricos.")
                     error = True
                 elif len(c1) != 9 or not c1.isdigit():
-                    st.error("❌ El Celular debe ser de 9 dígitos numéricos (sin letras).")
+                    st.error("❌ El Celular debe ser de 9 dígitos numéricos.")
                     error = True
                 elif len(n_ped) != 10 or not n_ped.isdigit():
                     st.error("❌ El N° de Pedido debe tener 10 dígitos numéricos.")
@@ -147,11 +145,21 @@ with tab1:
                     st.error("❌ Seleccione Operación y Producto.")
                     error = True
 
-            # 3. Validación NO-VENTA
+            # 3. NUEVA VALIDACIÓN PARA REFERIDO (Campos obligatorios)
+            elif detalle == "REFERIDO":
+                if not n_ref.strip():
+                    st.error("❌ Para REFERIDOS, el nombre del referido es obligatorio.")
+                    error = True
+                elif len(c_ref) != 9 or not c_ref.isdigit():
+                    st.error("❌ El Celular del Referido debe tener exactamente 9 dígitos numéricos.")
+                    error = True
+
+            # 4. Validación NO-VENTA
             elif detalle == "NO-VENTA" and m_nv == "SELECCIONA":
                 st.error("❌ Debe seleccionar un motivo de No-Venta.")
                 error = True
 
+            # --- PROCESO DE GUARDADO ---
             if not error:
                 try:
                     tz = pytz.timezone('America/Lima')
@@ -165,14 +173,14 @@ with tab1:
                         prod, c_fe, f"'{n_ped}", pil, m_nv, n_ref, f"'{c_ref}",
                         f_actual, h_actual
                     ]
+                    
                     conectar_google().sheet1.append_row(fila, value_input_option='USER_ENTERED')
-                    st.success(f"✅ ¡Guardado! (Hora: {h_actual})")
+                    st.success(f"✅ ¡Guardado con éxito! (Hora: {h_actual}:00)")
                     time.sleep(1)
                     st.session_state.form_key += 1
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error al guardar: {e}")
-
 with tab2:
     st.markdown("##### 📊 DASHBOARD OPERATIVO")
     
@@ -280,3 +288,4 @@ with tab2:
                 ranking_d.to_excel(writer, sheet_name='Ranking')
             st.download_button("📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
                                file_name=f"Metas_Vendedores.xlsx", use_container_width=True)
+
