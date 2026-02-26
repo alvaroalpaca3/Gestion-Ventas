@@ -176,6 +176,19 @@ with tab1:
 with tab2:
     st.markdown("##### 📊 DASHBOARD OPERATIVO")
     
+    # --- TRUCO MAESTRO DE CSS PARA CENTRADO ABSOLUTO ---
+    st.markdown("""
+        <style>
+            /* Centrar cabeceras */
+            .stDataFrame th {text-align: center !important;}
+            /* Centrar contenido de celdas */
+            .stDataFrame td {text-align: center !important;}
+            /* Forzar alineación en el nuevo componente de datos de Streamlit */
+            [data-testid="stTable"] {text-align: center !important;}
+            div[data-testid="stDataFrame"] div[class^="st-"] {text-align: center !important;}
+        </style>
+    """, unsafe_allow_html=True)
+    
     if df_registros.empty:
         st.info("Aún no hay datos registrados.")
     else:
@@ -192,10 +205,10 @@ with tab2:
             supervisores = ["TODOS"] + sorted(df_t["SUPERVISOR"].unique().tolist())
             sup_sel = st.selectbox("Supervisor (Histórico)", supervisores)
 
-        # Definición de Estilos Comunes para Simetría
-        # Celeste claro para totales: #CCE5FF
-        estilo_celeste = 'background-color: #CCE5FF; color: #004085; font-weight: bold; text-align: center;'
-        
+        # Color unificado para Totales (Azul bajo/Celeste)
+        color_celeste = '#CCE5FF'
+        texto_azul_oscuro = '#004085'
+
         # --- SECCIÓN 1: MONITOR HORARIO ---
         st.divider()
         st.markdown(f"⏰ **Actividad por Horas ({dia_sel})**")
@@ -206,14 +219,20 @@ with tab2:
             ranking_h["TOTAL"] = ranking_h.sum(axis=1)
             ranking_h = ranking_h.sort_values(by="TOTAL", ascending=False)
             
-            # Forzamos centrado en cabeceras (th) y celdas (td)
+            # Formateamos los números a string para engañar al alineador automático de Streamlit
+            ranking_h_str = ranking_h.astype(str).replace('0', '-') 
+
             st.dataframe(
-                ranking_h.style.set_properties(**{
+                ranking_h_str.style.set_properties(**{
                     'text-align': 'center',
-                    'vertical-align': 'middle'
+                    'font-family': 'sans-serif'
                 }).set_table_styles([
-                    {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#F0F2F6')]}
-                ]).set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'color': '#004085', 'font-weight': 'bold'}),
+                    {'selector': 'th', 'props': [('text-align', 'center')]}
+                ]).set_properties(subset=['TOTAL'], **{
+                    'background-color': color_celeste, 
+                    'color': texto_azul_oscuro, 
+                    'font-weight': 'bold'
+                }),
                 use_container_width=True
             )
 
@@ -232,32 +251,32 @@ with tab2:
             ranking_d["TOTAL ACUMULADO"] = ranking_d.sum(axis=1)
             ranking_d = ranking_d.sort_values(by="TOTAL ACUMULADO", ascending=False)
 
-            # Función para meta >= 40 (Verde) y centrado para los demás
-            def style_metas_y_centrado(val):
+            # Pasamos a texto para forzar el centrado
+            ranking_d_str = ranking_d.astype(str)
+
+            def style_metas(val):
                 try:
-                    if float(val) >= 40: 
-                        return 'background-color: #90EE90; color: #004D00; font-weight: bold; text-align: center;'
+                    if int(val) >= 40: 
+                        return f'background-color: #90EE90; color: #004D00; font-weight: bold; text-align: center;'
                 except: pass
                 return 'text-align: center;'
 
             st.dataframe(
-                ranking_d.style.set_properties(**{
-                    'text-align': 'center',
-                    'vertical-align': 'middle'
-                }).set_table_styles([
-                    {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#F0F2F6')]}
-                ]).applymap(style_metas_y_centrado, subset=cols_fechas)
-                .set_properties(subset=['TOTAL ACUMULADO'], **{'background-color': '#CCE5FF', 'color': '#004085', 'font-weight': 'bold'})
-                , use_container_width=True
+                ranking_d_str.style.set_properties(**{'text-align': 'center'})
+                .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}])
+                .applymap(style_metas, subset=cols_fechas)
+                .set_properties(subset=['TOTAL ACUMULADO'], **{
+                    'background-color': color_celeste, 
+                    'color': texto_azul_oscuro, 
+                    'font-weight': 'bold'
+                }),
+                use_container_width=True
             )
 
             # --- BOTÓN EXCEL ---
             import io
-            try:
-                buffer = io.BytesIO()
-                with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                    ranking_d.to_excel(writer, sheet_name='Ranking_Metas')
-                st.download_button("📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
-                                   file_name=f"Metas_{zonal_sel}.xlsx", use_container_width=True)
-            except:
-                st.warning("Asegúrate de tener 'xlsxwriter' en requirements.txt")
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                ranking_d.to_excel(writer, sheet_name='Ranking')
+            st.download_button("📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
+                               file_name=f"Metas_Vendedores.xlsx", use_container_width=True)
