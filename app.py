@@ -51,6 +51,7 @@ if "form_key" not in st.session_state: st.session_state.form_key = 0
 # --- 4. BARRA LATERAL ---
 
 st.sidebar.title("DIAMIRE")
+st.sidebar.caption("DIMIARE")
 
 st.sidebar.title("👤 Acceso Vendedor")
 dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=8)
@@ -207,5 +208,6 @@ with tab2:
                      .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
 
         
+
 
 
