@@ -223,40 +223,26 @@ with tab2:
         texto_azul_oscuro = '#004085'
 
         # --- SECCIÓN 1: MONITOR HORARIO ---
-        st.divider()
-        st.markdown(f"⏰ **Actividad por Horas ({dia_sel})**")
-        df_hoy = df_registros[df_registros["FECHA"] == dia_sel]
-        
+        # ... (filtros previos) ...
         if not df_hoy.empty:
+            # IMPORTANTE: Usamos 'FECHA' o cualquier columna que siempre tenga datos para contar (aggfunc='count')
             ranking_h = df_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
             ranking_h["TOTAL"] = ranking_h.sum(axis=1)
             ranking_h = ranking_h.sort_values(by="TOTAL", ascending=False)
             
-            # Formateamos los números a string para engañar al alineador automático de Streamlit
+            # Formateamos a string para el centrado que ya logramos
             ranking_h_str = ranking_h.astype(str).replace('0', '-') 
 
             st.dataframe(
-                ranking_h_str.style.set_properties(**{
-                    'text-align': 'center',
-                    'font-family': 'sans-serif'
-                }).set_table_styles([
-                    {'selector': 'th', 'props': [('text-align', 'center')]}
-                ]).set_properties(subset=['TOTAL'], **{
-                    'background-color': color_celeste, 
-                    'color': texto_azul_oscuro, 
-                    'font-weight': 'bold'
-                }),
+                ranking_h_str.style.set_properties(**{'text-align': 'center'})
+                .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}])
+                .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'color': '#004085', 'font-weight': 'bold'}),
                 use_container_width=True
             )
 
-        # --- SECCIÓN 2: RANKING DE METAS (≥ 40) ---
-        st.divider()
-        st.markdown("🏆 **Ranking de Metas Diarias (Meta: ≥ 40)**")
-        df_acc = df_registros.copy()
-        if zonal_sel != "TODOS": df_acc = df_acc[df_acc["ZONAL"] == zonal_sel]
-        if sup_sel != "TODOS": df_acc = df_acc[df_acc["SUPERVISOR"] == sup_sel]
-
+        # --- SECCIÓN 2: RANKING DE METAS (Aquí es donde se ven los 40) ---
         if not df_acc.empty:
+            # Aquí nos aseguramos de que cuente TODAS las gestiones (Venta, No-Venta y Referido)
             ranking_d = df_acc.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
             ranking_d = ranking_d.reindex(sorted(ranking_d.columns, reverse=True), axis=1)
             
@@ -264,13 +250,14 @@ with tab2:
             ranking_d["TOTAL ACUMULADO"] = ranking_d.sum(axis=1)
             ranking_d = ranking_d.sort_values(by="TOTAL ACUMULADO", ascending=False)
 
-            # Pasamos a texto para forzar el centrado
+            # Pasamos a texto para mantener el centrado simétrico
             ranking_d_str = ranking_d.astype(str)
 
             def style_metas(val):
                 try:
+                    # Si el conteo (ahora incluyendo referidos) es >= 40, se pone verde
                     if int(val) >= 40: 
-                        return f'background-color: #90EE90; color: #004D00; font-weight: bold; text-align: center;'
+                        return 'background-color: #90EE90; color: #004D00; font-weight: bold; text-align: center;'
                 except: pass
                 return 'text-align: center;'
 
@@ -278,12 +265,8 @@ with tab2:
                 ranking_d_str.style.set_properties(**{'text-align': 'center'})
                 .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}])
                 .applymap(style_metas, subset=cols_fechas)
-                .set_properties(subset=['TOTAL ACUMULADO'], **{
-                    'background-color': color_celeste, 
-                    'color': texto_azul_oscuro, 
-                    'font-weight': 'bold'
-                }),
-                use_container_width=True
+                .set_properties(subset=['TOTAL ACUMULADO'], **{'background-color': '#CCE5FF', 'color': '#004085', 'font-weight': 'bold'})
+                , use_container_width=True
             )
 
             # --- BOTÓN EXCEL ---
@@ -293,6 +276,7 @@ with tab2:
                 ranking_d.to_excel(writer, sheet_name='Ranking')
             st.download_button("📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
                                file_name=f"Metas_Vendedores.xlsx", use_container_width=True)
+
 
 
 
