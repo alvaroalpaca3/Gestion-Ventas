@@ -192,6 +192,12 @@ with tab2:
         st.dataframe(rd.sort_values(by="TOTAL ACUM", ascending=False).style.applymap(color_meta, subset=rd.columns[:-1])
                      .set_properties(**{'text-align': 'center'}), use_container_width=True)
 
+         # --- BOTÓN DE DESCARGA: EXPORTA EL RANKING DE METAS ---
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
+            rd.to_excel(wr, sheet_name='Ranking_Metas')
+        st.download_button("📥 Descargar Ranking Metas (Excel)", data=buf.getvalue(), file_name="Ranking_Metas_40.xlsx", use_container_width=True)
+
         # 3. MATRIZ PRODUCTIVIDAD
         st.divider()
         st.markdown(f"📋 **Matriz de Productividad ({z_sel})**")
@@ -200,18 +206,4 @@ with tab2:
         st.dataframe(tp.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'})
                      .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
 
-        # 4. MÉTRICAS Y GRÁFICA
-        m1, m2, m3 = st.columns(3)
-        with m1: st.metric("Total Global", int(tp["TOTAL"].sum()))
-        with m2: st.markdown(f"<small>Top Vendedor</small><br><strong>{tp.index[0]}</strong>", unsafe_allow_html=True)
-        with m3: st.metric("Promedio", round(tp["TOTAL"].mean(), 1))
-
-        df_pie = tp.drop(columns=['TOTAL']).sum().reset_index()
-        fig = px.pie(df_pie, values=0, names='index' if 'index' in df_pie.columns else 'DETALLE', hole=0.5)
-        st.plotly_chart(fig, use_container_width=True)
-
-        # --- BOTÓN DE DESCARGA: EXPORTA EL RANKING DE METAS ---
-        buf = io.BytesIO()
-        with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
-            rd.to_excel(wr, sheet_name='Ranking_Metas')
-        st.download_button("📥 Descargar Ranking Metas (Excel)", data=buf.getvalue(), file_name="Ranking_Metas_40.xlsx", use_container_width=True)
+        
