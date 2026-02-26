@@ -200,7 +200,7 @@ with tab2:
             </style>
         """, unsafe_allow_html=True)
 
-        # --- SECCIÓN 1: MONITOR HORARIO (CON CENTRADO) ---
+        # --- SECCIÓN 1: MONITOR HORARIO ---
         st.divider()
         st.markdown(f"⏰ **Actividad por Horas ({dia_sel})**")
         df_hoy = df_registros[df_registros["FECHA"] == dia_sel]
@@ -210,14 +210,18 @@ with tab2:
             ranking_h["TOTAL"] = ranking_h.sum(axis=1)
             ranking_h = ranking_h.sort_values(by="TOTAL", ascending=False)
             
-            # Mostramos con gradiente azul en el total
+            # Centrado de contenido y cabeceras
             st.dataframe(
-                ranking_h.style.set_properties(**{'text-align': 'center'})
-                .background_gradient(cmap='Blues', subset=['TOTAL']),
+                ranking_h.style.set_properties(**{
+                    'text-align': 'center',
+                    'vertical-align': 'middle'
+                }).set_table_styles([
+                    {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#F0F2F6')]}
+                ]).set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}),
                 use_container_width=True
             )
 
-        # --- SECCIÓN 2: RANKING DE METAS (CENTRADO + TOTAL AZUL) ---
+        # --- SECCIÓN 2: RANKING DE METAS (≥ 40) ---
         st.divider()
         st.markdown("🏆 **Ranking de Metas Diarias (Meta: ≥ 40)**")
         df_acc = df_registros.copy()
@@ -228,7 +232,7 @@ with tab2:
             ranking_d = df_acc.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
             ranking_d = ranking_d.reindex(sorted(ranking_d.columns, reverse=True), axis=1)
             
-            cols_fechas = ranking_d.columns.tolist() # Solo columnas de fechas
+            cols_fechas = ranking_d.columns.tolist() 
             ranking_d["TOTAL ACUMULADO"] = ranking_d.sum(axis=1)
             ranking_d = ranking_d.sort_values(by="TOTAL ACUMULADO", ascending=False)
 
@@ -238,11 +242,15 @@ with tab2:
                 except: pass
                 return ''
 
-            # Aplicamos estilos: Verde en fechas, Azul en Total, Todo Centrado
+            # Centrado y Estilos de color
             st.dataframe(
-                ranking_d.style.set_properties(**{'text-align': 'center'})
-                .applymap(style_winner, subset=cols_fechas)
-                .set_properties(subset=['TOTAL ACUMULADO'], **{'background-color': '#CCE5FF', 'color': '#004085'})
+                ranking_d.style.set_properties(**{
+                    'text-align': 'center',
+                    'vertical-align': 'middle'
+                }).set_table_styles([
+                    {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#F0F2F6')]}
+                ]).applymap(style_winner, subset=cols_fechas)
+                .set_properties(subset=['TOTAL ACUMULADO'], **{'background-color': '#1E90FF', 'color': 'white', 'font-weight': 'bold'})
                 , use_container_width=True
             )
 
@@ -262,3 +270,4 @@ with tab2:
                 )
             except Exception as e:
                 st.error(f"Error al generar Excel: Asegúrate de tener 'xlsxwriter' instalado.")
+
