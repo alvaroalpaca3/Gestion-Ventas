@@ -1,4 +1,4 @@
-import streamlit as st
+ import streamlit as st
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -49,8 +49,7 @@ df_maestro, df_registros = cargar_datos()
 if "form_key" not in st.session_state: st.session_state.form_key = 0
 
 # --- 4. BARRA LATERAL ---
-
-st.sidebar.title("DIAMIRE")
+st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
 
 st.sidebar.title("👤 Acceso Vendedor")
 dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=8)
@@ -66,9 +65,9 @@ if not vendedor.empty and len(dni_input) == 8:
 else:
     nom_v = sup_v = zon_v = "N/A"
 
-st.sidebar.caption("")
-st.sidebar.caption("")
-st.sidebar.caption("©2026 Todos los derechos reservados by Dubby System SAC")
+st.sidebar.write("")
+st.sidebar.caption("©2026 Todos los derechos reservados")
+st.sidebar.caption("by Dubby System SAC")
 
 # --- 5. CUERPO PRINCIPAL ---
 st.header("📊 REGISTRO DE GESTIÓN DIARIA")
@@ -94,7 +93,7 @@ with tab1:
             ca, cb = st.columns(2)
             with ca:
                 n_cl = st.text_input("Nombre Cliente *").upper()
-                d_cl = st.text_input("DNI/RUC Cliente *", max_chars=8)
+                d_cl = st.text_input("DNI Cliente *", max_chars=8)
                 t_op = st.selectbox("Operación *", ["SELECCIONA", "CAPTACIÓN", "MIGRACIÓN", "COMPLETA TV", "COMPLETA BA", "COMPLETA MT"])
                 prod = st.selectbox("Producto *", ["SELECCIONA", "NAKED", "DUO INT + TV", "DUO BA", "DUO TV", "TRIO"])
                 pil = st.radio("Piloto?", ["NO", "SI"], horizontal=True)
@@ -151,68 +150,79 @@ with tab1:
                     st.rerun()
                 except Exception as e: st.error(f"Error: {e}")
 
-# --- PESTAÑA 2: DASHBOARD ---
+# --- PESTAÑA 2: DASHBOARD PROTEGIDA ---
 with tab2:
-    if df_registros.empty:
-        st.info("No hay datos registrados.")
+    st.subheader("🔐 Acceso Administrador")
+    col_u, col_p = st.columns(2)
+    with col_u:
+        admin_user = st.text_input("Usuario", key="admin_user")
+    with col_p:
+        admin_pass = st.text_input("Contraseña", type="password", key="admin_pass")
+
+    # Credencial única de acceso
+    if admin_user == "admin" and admin_pass == "Diamire2026*":
+        st.success("🔓 Acceso Concedido")
+        st.divider()
+
+        if df_registros.empty:
+            st.info("No hay datos registrados.")
+        else:
+            df_registros['DETALLE'] = df_registros['DETALLE'].astype(str).str.strip().str.upper()
+            
+            # Filtros
+            f1, f2, f3 = st.columns(3)
+            with f1: dia_sel = st.selectbox("📅 Día Control", sorted(df_registros["FECHA"].unique(), reverse=True))
+            with f2:
+                z_list = ["TODOS"] + sorted(df_registros["ZONAL"].unique().astype(str).tolist())
+                z_sel = st.selectbox("Zonal", z_list)
+            with f3:
+                df_t = df_registros[df_registros["ZONAL"] == z_sel] if z_sel != "TODOS" else df_registros.copy()
+                s_list = ["TODOS"] + sorted(df_t["SUPERVISOR"].unique().astype(str).tolist())
+                s_sel = st.selectbox("Supervisor", s_list)
+            
+            df_f = df_t[df_t["SUPERVISOR"] == s_sel] if s_sel != "TODOS" else df_t.copy()
+
+            # 1. MONITOR HORARIO
+            st.markdown(f"⏰ **Monitor Horario ({dia_sel})**")
+            df_h = df_f[df_f["FECHA"] == dia_sel]
+            if not df_h.empty:
+                rh = df_h.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
+                rh["TOTAL"] = rh.sum(axis=1)
+                st.dataframe(rh.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'}), use_container_width=True)
+
+            # 2. RANKING METAS (DESCARGA EXCLUSIVA)
+            st.divider()
+            st.markdown("🏆 **Ranking Metas Diarias (Meta ≥ 40)**")
+            rd = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
+            rd = rd.reindex(sorted(rd.columns, reverse=True), axis=1)
+            rd["TOTAL ACUM"] = rd.sum(axis=1)
+            
+            def color_meta(v):
+                try: return 'background-color: #90EE90; color: black;' if int(v) >= 40 else ''
+                except: return ''
+            
+            st.dataframe(rd.sort_values(by="TOTAL ACUM", ascending=False).style.applymap(color_meta, subset=rd.columns[:-1])
+                         .set_properties(**{'text-align': 'center'}), use_container_width=True)
+
+            # Botón de Descarga del Ranking
+            buf = io.BytesIO()
+            with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
+                rd.to_excel(wr, sheet_name='Ranking_Metas')
+            st.download_button("📥 Descargar Ranking Metas (Excel)", data=buf.getvalue(), file_name="Ranking_Metas_40.xlsx", use_container_width=True)
+
+            # 3. MATRIZ PRODUCTIVIDAD
+            st.divider()
+            st.markdown(f"📋 **Matriz de Productividad ({z_sel})**")
+            tp = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
+            tp["TOTAL"] = tp.sum(axis=1)
+            st.dataframe(tp.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'})
+                         .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
+
+            # Gráfica
+            fig = px.pie(tp.drop(columns=['TOTAL']).sum().reset_index(), values=0, names='index', hole=0.5, title="Mix de Gestión")
+            st.plotly_chart(fig, use_container_width=True)
+
+    elif admin_user != "" or admin_pass != "":
+        st.error("❌ Credenciales incorrectas.")
     else:
-        df_registros['DETALLE'] = df_registros['DETALLE'].astype(str).str.strip().str.upper()
-        
-        # Filtros
-        f1, f2, f3 = st.columns(3)
-        with f1: dia_sel = st.selectbox("📅 Día Control", sorted(df_registros["FECHA"].unique(), reverse=True))
-        with f2:
-            z_list = ["TODOS"] + sorted(df_registros["ZONAL"].unique().astype(str).tolist())
-            z_sel = st.selectbox("Zonal", z_list)
-        with f3:
-            df_t = df_registros[df_registros["ZONAL"] == z_sel] if z_sel != "TODOS" else df_registros.copy()
-            s_list = ["TODOS"] + sorted(df_t["SUPERVISOR"].unique().astype(str).tolist())
-            s_sel = st.selectbox("Supervisor", s_list)
-        
-        df_f = df_t[df_t["SUPERVISOR"] == s_sel] if s_sel != "TODOS" else df_t.copy()
-
-        # 1. MONITOR HORARIO
-        st.divider()
-        st.markdown(f"⏰ **Monitor Horario ({dia_sel})**")
-        df_h = df_f[df_f["FECHA"] == dia_sel]
-        if not df_h.empty:
-            rh = df_h.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
-            rh["TOTAL"] = rh.sum(axis=1)
-            st.dataframe(rh.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'}), use_container_width=True)
-
-        # 2. RANKING METAS DIARIAS (LO QUE SE DESCARGA)
-        st.divider()
-        st.markdown("🏆 **Ranking Metas Diarias (Meta ≥ 40)**")
-        rd = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
-        rd = rd.reindex(sorted(rd.columns, reverse=True), axis=1)
-        rd["TOTAL ACUM"] = rd.sum(axis=1)
-        
-        def color_meta(v):
-            try: return 'background-color: #90EE90;' if int(v) >= 40 else ''
-            except: return ''
-        
-        st.dataframe(rd.sort_values(by="TOTAL ACUM", ascending=False).style.applymap(color_meta, subset=rd.columns[:-1])
-                     .set_properties(**{'text-align': 'center'}), use_container_width=True)
-
-         # --- BOTÓN DE DESCARGA: EXPORTA EL RANKING DE METAS ---
-        buf = io.BytesIO()
-        with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
-            rd.to_excel(wr, sheet_name='Ranking_Metas')
-        st.download_button("📥 Descargar Ranking Metas (Excel)", data=buf.getvalue(), file_name="Ranking_Metas_40.xlsx", use_container_width=True)
-
-        # 3. MATRIZ PRODUCTIVIDAD
-        st.divider()
-        st.markdown(f"📋 **Matriz de Productividad ({z_sel})**")
-        tp = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
-        tp["TOTAL"] = tp.sum(axis=1)
-        st.dataframe(tp.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'})
-                     .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
-
-        
-
-
-
-
-
-
-
+        st.warning("🔒 Ingrese credenciales de administrador para ver el Dashboard.")
