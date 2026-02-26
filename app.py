@@ -284,10 +284,12 @@ with tab2:
             st.markdown(f"📊 **Composición de Gestiones ({zonal_sel} - {sup_sel})**")
 
             if not df_final.empty:
-                # 1. Agrupamos y contamos
+                # 1. Agrupamos y contamos SOLO los datos filtrados
                 df_donut = df_final['DETALLE'].value_counts().reset_index()
                 df_donut.columns = ['Gestión', 'Total']
-                total_gestiones = int(df_donut['Total'].sum())
+                
+                # RECALCULAMOS EL TOTAL basado solo en lo que se va a graficar
+                total_real = int(df_donut['Total'].sum())
 
                 import plotly.express as px
                 
@@ -301,7 +303,7 @@ with tab2:
                     template='plotly_white'
                 )
 
-                # 3. Etiquetas con Cantidad + Porcentaje
+                # 3. Etiquetas: Cantidad + Porcentaje
                 fig.update_traces(
                     texttemplate='<b>%{label}</b><br>%{value} uds.<br>%{percent}',
                     textposition='outside',
@@ -309,11 +311,11 @@ with tab2:
                     marker=dict(line=dict(color='#FFFFFF', width=2))
                 )
 
-                # 4. Texto Central con el Total General (Color fijo para evitar NameError)
+                # 4. Texto Central SINCRONIZADO
                 fig.add_annotation(
-                    text=f"TOTAL<br><b>{total_gestiones}</b>",
+                    text=f"TOTAL<br><b>{total_real}</b>", # Usamos total_real aquí
                     showarrow=False,
-                    font=dict(size=20, color='#004085'), # Azul oscuro directo
+                    font=dict(size=22, color='#004085'),
                     x=0.5, y=0.5
                 )
 
@@ -325,7 +327,6 @@ with tab2:
                     margin=dict(l=50, r=50, t=30, b=100)
                 )
 
-                # 6. Mostrar
                 st.plotly_chart(fig, use_container_width=True)
                 
             else:
