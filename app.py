@@ -279,7 +279,8 @@ with tab2:
             st.download_button("📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
                                file_name=f"Metas_Vendedores.xlsx", use_container_width=True)
 
-# --- SECCIÓN 3: COMPOSICIÓN DE GESTIONES (GRÁFICA DE DONA) ---
+
+           # --- SECCIÓN 3: COMPOSICIÓN DE GESTIONES (GRÁFICA DE DONA) ---
             st.divider()
             st.markdown(f"📊 **Composición de Gestiones ({zonal_sel} - {sup_sel})**")
 
