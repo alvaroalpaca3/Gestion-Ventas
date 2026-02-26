@@ -66,6 +66,8 @@ if not vendedor.empty and len(dni_input) == 8:
 else:
     nom_v = sup_v = zon_v = "N/A"
 
+st.sidebar.tabs("©2026 Todos los derechos reservados by Alvaro Alpaca")
+
 # --- 5. CUERPO PRINCIPAL ---
 st.header("📊 REGISTRO DE GESTIÓN DIARIA")
 tab1, tab2 = st.tabs(["📝 REGISTRO", "📊 DASHBOARD"])
@@ -205,4 +207,5 @@ with tab2:
                      .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
 
         
+
 
