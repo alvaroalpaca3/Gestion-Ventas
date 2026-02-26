@@ -94,7 +94,7 @@ with tab1:
             ca, cb = st.columns(2)
             with ca:
                 n_cl = st.text_input("Nombre Cliente *").upper()
-                d_cl = st.text_input("DNI/RUC Cliente *", max_chars=11)
+                d_cl = st.text_input("DNI/RUC Cliente *", max_chars=8)
                 t_op = st.selectbox("Operación *", ["SELECCIONA", "CAPTACIÓN", "MIGRACIÓN", "COMPLETA TV", "COMPLETA BA", "COMPLETA MT"])
                 prod = st.selectbox("Producto *", ["SELECCIONA", "NAKED", "DUO INT + TV", "DUO BA", "DUO TV", "TRIO"])
                 pil = st.radio("Piloto?", ["NO", "SI"], horizontal=True)
@@ -209,6 +209,7 @@ with tab2:
                      .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
 
         
+
 
 
 
