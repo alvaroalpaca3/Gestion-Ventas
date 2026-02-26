@@ -287,6 +287,7 @@ with tab2:
                 # 1. Agrupamos y contamos
                 df_donut = df_final['DETALLE'].value_counts().reset_index()
                 df_donut.columns = ['Gestión', 'Total']
+                total_gestiones = df_donut['Total'].sum()
 
                 import plotly.express as px
                 
@@ -295,31 +296,42 @@ with tab2:
                     df_donut, 
                     values='Total', 
                     names='Gestión', 
-                    hole=0.5, # Esto crea el hueco central de la dona
+                    hole=0.5, # Hueco central
                     color_discrete_sequence=px.colors.qualitative.Safe,
                     template='plotly_white'
                 )
 
-                # 3. Personalización de etiquetas y trazo
+                # 3. Etiquetas con Cantidad + Porcentaje
+                # El formato '%{label}: %{value} (%{percent})' muestra Nombre, Número y %
                 fig.update_traces(
-                    textinfo='percent+label',
-                    pull=[0.05] * len(df_donut), # Separa un poco las tajadas
-                    marker=dict(line=dict(color='#000000', width=1))
+                    texttemplate='<b>%{label}</b><br>%{value} uds.<br>%{percent}',
+                    textposition='outside', # Lo ponemos afuera para que no se amontone
+                    pull=[0.02] * len(df_donut),
+                    marker=dict(line=dict(color='#FFFFFF', width=2))
                 )
 
-                # 4. Ajustes de diseño
+                # 4. Texto Central con el Total General
+                fig.add_annotation(
+                    text=f"TOTAL<br><b>{total_gestiones}</b>",
+                    showarrow=False,
+                    font=dict(size=20, color=texto_azul_oscuro),
+                    x=0.5, y=0.5
+                )
+
+                # 5. Ajustes de diseño
                 fig.update_layout(
                     showlegend=True,
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
-                    height=450,
-                    margin=dict(l=20, r=20, t=30, b=100)
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
+                    height=500,
+                    margin=dict(l=50, r=50, t=30, b=100)
                 )
 
-                # 5. Mostrar
+                # 6. Mostrar
                 st.plotly_chart(fig, use_container_width=True)
                 
             else:
                 st.warning("No hay datos para mostrar en la gráfica.")
+
 
 
 
