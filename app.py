@@ -150,13 +150,12 @@ with tab1:
                     st.rerun()
                 except Exception as e: st.error(f"Error: {e}")
 
-# --- PESTAÑA 2: MI PROGRESO (OPTIMIZADA PARA MÓVIL) ---
+# --- PESTAÑA 2: MI PROGRESO (ALINEACIÓN TOTAL A LA IZQUIERDA) ---
 with tab_personal:
     if nom_v == "N/A":
         st.warning("👈 Ingrese su DNI en la barra lateral.")
     else:
-        # Título más pequeño y elegante
-        st.markdown(f"### 📈 Mi Actividad: <span style='color:#1E3A8A;'>{nom_v}</span>", unsafe_allow_html=True)
+        st.markdown(f"##### 📈 Mi Actividad: <span style='color:#1E3A8A;'>{nom_v}</span>", unsafe_allow_html=True)
         
         if not df_registros.empty:
             col_target = "DOCUMENTO VENDEDOR"
@@ -168,8 +167,15 @@ with tab_personal:
                 if df_mio.empty:
                     st.info("Sin registros guardados.")
                 else:
-                    # 1. MONITOR HORARIO (Etiqueta pequeña)
-                    st.markdown("##### **1. Monitor Diario)**")
+                    # Estilo común para forzar alineación a la izquierda en todo
+                    estilo_izq = {
+                        'selector': 'th',
+                        'props': [('text-align', 'left')]
+                    }
+                    estilo_celda = {'text-align': 'left', 'font-size': '12px'}
+
+                    # 1. MONITOR HORARIO
+                    st.markdown("##### **1. Monitor Diario**")
                     tz = pytz.timezone('America/Lima')
                     hoy = datetime.now(tz).strftime("%d/%m/%Y")
                     df_mio_hoy = df_mio[df_mio["FECHA"] == hoy]
@@ -177,33 +183,41 @@ with tab_personal:
                     if not df_mio_hoy.empty:
                         mi_rh = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
                         mi_rh["TOTAL"] = mi_rh.sum(axis=1)
-                        st.dataframe(mi_rh.style.set_properties(**{'text-align': 'center', 'font-size': '12px'}), use_container_width=True)
+                        # Aplicamos alineación a la izquierda a todo el dataframe
+                        st.dataframe(
+                            mi_rh.style.set_table_styles([estilo_izq])
+                            .set_properties(**estilo_celda), 
+                            use_container_width=True
+                        )
                     else:
                         st.caption(f"Sin actividad hoy {hoy}")
 
-                    # 2. RANKING METAS (Etiqueta pequeña)
+                    # 2. AVANCE DEL MES (RANKING)
                     st.markdown("##### **2. Avance del Mes**")
                     mi_rd = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
                     mi_rd = mi_rd.reindex(sorted(mi_rd.columns, reverse=True), axis=1)
                     mi_rd["TOTAL"] = mi_rd.sum(axis=1)
                     
-                    st.dataframe(mi_rd.style.applymap(lambda v: 'background-color: #90EE90; color: black;' if isinstance(v, (int, float)) and v >= 40 else '', subset=mi_rd.columns[:-1])
-                                 .set_properties(**{'text-align': 'center', 'font-size': '12px'}), use_container_width=True)
+                    st.dataframe(
+                        mi_rd.style.set_table_styles([estilo_izq])
+                        .applymap(lambda v: 'background-color: #90EE90; color: black;' if isinstance(v, (int, float)) and v >= 40 else '', subset=mi_rd.columns[:-1])
+                        .set_properties(**estilo_celda), 
+                        use_container_width=True
+                    )
 
-                    # 3. MATRIZ PRODUCTIVIDAD (Etiqueta pequeña y Layout compacto)
+                    # 3. MATRIZ DE PRODUCTIVIDAD
                     st.markdown("##### **3. Matriz de Productividad**")
-                    
-                    # En móvil, el gráfico se verá mejor arriba de la tabla
-                    fig_m = px.pie(df_mio, names='DETALLE', hole=0.4)
-                    fig_m.update_layout(showlegend=True, height=250, margin=dict(t=10, b=10, l=10, r=10), legend=dict(orientation="h", y=-0.1))
-                    st.plotly_chart(fig_m, use_container_width=True)
-                    
                     mi_tp = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
                     mi_tp["TOTAL"] = mi_tp.sum(axis=1)
-                    st.dataframe(mi_tp.style.set_properties(**{'text-align': 'center', 'font-size': '12px'})
-                                 .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), use_container_width=True)
+                    
+                    st.dataframe(
+                        mi_tp.style.set_table_styles([estilo_izq])
+                        .set_properties(**estilo_celda)
+                        .set_properties(subset=['TOTAL'], **{'background-color': '#CCE5FF', 'font-weight': 'bold'}), 
+                        use_container_width=True
+                    )
             else:
-                st.error("Columna Documento no encontrada.")
+                st.error(f"No se detectó la columna {col_target}")
 
 
 # --- PESTAÑA 3: DASHBOARD (ADMIN) ---
@@ -272,6 +286,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
