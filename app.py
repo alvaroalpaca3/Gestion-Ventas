@@ -39,6 +39,7 @@ def cargar_datos():
     try:
         ws_reg = doc.sheet1
         df_reg = pd.DataFrame(ws_reg.get_all_records())
+        # Normalizamos encabezados para evitar errores por espacios
         df_reg.columns = [str(c).strip().upper() for c in df_reg.columns]
     except: df_reg = pd.DataFrame()
         
@@ -72,7 +73,7 @@ st.sidebar.caption("by Dubby System SAC")
 st.header("📊 REGISTRO DE GESTIÓN DIARIA")
 tab1, tab_personal, tab2 = st.tabs(["📝 REGISTRO", "📈 MI PROGRESO", "📊 DASHBOARD"])
 
-# --- PESTAÑA 1: FORMULARIO (VALIDACIONES ESTRICTAS) ---
+# --- PESTAÑA 1: FORMULARIO (TUS REGLAS ORIGINALES) ---
 with tab1:
     st.markdown("#### 📝 INGRESO DE GESTIÓN")
     detalle = st.selectbox("DETALLE DE GESTIÓN *", ["SELECCIONA", "VENTA FIJA", "NO-VENTA", "CLIENTE AGENDADO", "REFERIDO"])
@@ -92,7 +93,7 @@ with tab1:
             ca, cb = st.columns(2)
             with ca:
                 n_cl = st.text_input("Nombre Cliente *").upper()
-                d_cl = st.text_input("DNI/RUC Cliente *", max_chars=11)
+                d_cl = st.text_input("DNI Cliente *", max_chars=8)
                 t_op = st.selectbox("Operación *", ["SELECCIONA", "CAPTACIÓN", "MIGRACIÓN", "COMPLETA TV", "COMPLETA BA", "COMPLETA MT"])
                 prod = st.selectbox("Producto *", ["SELECCIONA", "NAKED", "DUO INT + TV", "DUO BA", "DUO TV", "TRIO"])
                 pil = st.radio("Piloto?", ["NO", "SI"], horizontal=True)
@@ -118,7 +119,7 @@ with tab1:
                     st.error("❌ Error: Todos los campos marcados con (*) son obligatorios.")
                     error = True
                 elif len(d_cl) < 8:
-                    st.error("❌ Error: El DNI/RUC debe tener al menos 8 dígitos.")
+                    st.error("❌ Error: El DNI debe tener 8 dígitos.")
                     error = True
                 elif len(c1) != 9 or not c1.isdigit():
                     st.error("❌ Error: El celular debe tener 9 dígitos numéricos.")
@@ -149,20 +150,19 @@ with tab1:
                     st.rerun()
                 except Exception as e: st.error(f"Error: {e}")
 
-# --- PESTAÑA 2: MI PROGRESO (CORREGIDA) ---
+# --- PESTAÑA 2: MI PROGRESO (CORREGIDA CON DOCUMENTO VENDEDOR) ---
 with tab_personal:
     if nom_v == "N/A":
         st.warning("👈 Ingrese su DNI en la barra lateral para ver su progreso.")
     else:
         st.subheader(f"📈 Mi Actividad: {nom_v}")
         if not df_registros.empty:
-            # Buscamos la columna DNI del vendedor (evitando la del cliente)
-            cols_dni = [c for c in df_registros.columns if "DNI" in c and "CLIENTE" not in c]
-            if cols_dni:
-                target_col = cols_dni[0]
-                # Limpieza segura
-                df_registros[target_col] = df_registros[target_col].astype(str).str.replace("'", "").str.strip()
-                df_mio = df_registros[df_registros[target_col] == dni_clean].copy()
+            # Apuntamos directamente a DOCUMENTO VENDEDOR
+            col_target = "DOCUMENTO VENDEDOR"
+            
+            if col_target in df_registros.columns:
+                df_registros[col_target] = df_registros[col_target].astype(str).str.replace("'", "").str.strip()
+                df_mio = df_registros[df_registros[col_target] == dni_clean].copy()
                 
                 if df_mio.empty:
                     st.info("No tienes registros guardados aún.")
@@ -174,14 +174,14 @@ with tab_personal:
                     fig_m = px.pie(df_mio, names='DETALLE', hole=0.4, title="Mix Personal de Gestión")
                     st.plotly_chart(fig_m, use_container_width=True)
             else:
-                st.error("No se detectó la columna DNI en la base de datos.")
+                st.error(f"⚠️ Error: No se encuentra la columna '{col_target}' en la hoja de registros.")
 
-# --- PESTAÑA 3: DASHBOARD (TU LÓGICA ORIGINAL RECUPERADA) ---
+# --- PESTAÑA 3: DASHBOARD (MANTENIENDO TU LÓGICA DE ADMIN) ---
 with tab2:
     st.subheader("🔐 Acceso Administrador")
-    col_admin1, col_admin2 = st.columns(2)
-    with col_admin1: admin_user = st.text_input("Usuario", key="adm_u")
-    with col_admin2: admin_pass = st.text_input("Contraseña", type="password", key="adm_p")
+    c_u, c_p = st.columns(2)
+    with c_u: admin_user = st.text_input("Usuario", key="ad_u")
+    with c_p: admin_pass = st.text_input("Contraseña", type="password", key="ad_p")
 
     if admin_user == "admin" and admin_pass == "Diamire2026*":
         st.success("🔓 Acceso Concedido")
@@ -200,7 +200,7 @@ with tab2:
             
             df_f = df_t[df_t["SUPERVISOR"] == s_sel] if s_sel != "TODOS" else df_t.copy()
 
-            # 1. MONITOR HORARIO
+            # MONITOR HORARIO
             st.divider()
             st.markdown(f"⏰ **Monitor Horario ({dia_sel})**")
             df_h = df_f[df_f["FECHA"] == dia_sel]
@@ -209,7 +209,7 @@ with tab2:
                 rh["TOTAL"] = rh.sum(axis=1)
                 st.dataframe(rh.sort_values(by="TOTAL", ascending=False).style.set_properties(**{'text-align': 'center'}), use_container_width=True)
 
-            # 2. RANKING METAS
+            # RANKING METAS
             st.divider()
             st.markdown("🏆 **Ranking Metas Diarias (Meta ≥ 40)**")
             rd = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
@@ -219,7 +219,13 @@ with tab2:
             st.dataframe(rd.sort_values(by="TOTAL ACUM", ascending=False).style.applymap(lambda v: 'background-color: #90EE90; color: black;' if isinstance(v, (int, float)) and v >= 40 else '', subset=rd.columns[:-1])
                          .set_properties(**{'text-align': 'center'}), use_container_width=True)
 
-            # 3. MATRIZ PRODUCTIVIDAD
+              # Exportar
+            buf = io.BytesIO()
+            with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
+                tp.to_excel(wr, sheet_name='Matriz')
+            st.download_button("📥 Descargar Reporte Excel", data=buf.getvalue(), file_name="Productividad.xlsx", use_container_width=True)
+            
+            # MATRIZ PRODUCTIVIDAD
             st.divider()
             st.markdown(f"📋 **Matriz de Productividad ({z_sel})**")
             tp = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
