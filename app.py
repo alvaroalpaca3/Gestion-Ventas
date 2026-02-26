@@ -77,7 +77,7 @@ else:
     nom_v = sup_v = zon_v = "N/A"
 
 # --- INTERFAZ ---
-st.header("📊SISTEMA DE GESTIÓN DIARIA")
+st.header("📊REGISTRO DE GESTIÓN DIARIA")
 
 tab1, tab2 = st.tabs(["📝 REGISTRO", "📊 DASHBOARD"])
 
@@ -199,78 +199,62 @@ with tab2:
             supervisores = ["TODOS"] + sorted(df_t["SUPERVISOR"].unique().tolist())
             sup_sel = st.selectbox("Supervisor (Histórico)", supervisores)
 
-        # --- SECCIÓN 1: MONITOR HORARIO (FILTRADO POR DÍA) ---
+       # --- SECCIÓN 1: MONITOR HORARIO (CENTRADO) ---
         st.divider()
-        st.markdown(f"⏰ **Actividad por Horas - Día Seleccionado: {dia_sel}**")
-        
+        st.markdown(f"⏰ **Actividad por Horas - {dia_sel}**")
         df_hoy = df_registros[df_registros["FECHA"] == dia_sel]
         
         if not df_hoy.empty:
-            ranking_h = df_hoy.pivot_table(
-                index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", 
-                aggfunc="count", fill_value=0
-            )
-            ranking_h = ranking_h.reindex(sorted(ranking_h.columns), axis=1)
+            ranking_h = df_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
             ranking_h["TOTAL"] = ranking_h.sum(axis=1)
             ranking_h = ranking_h.sort_values(by="TOTAL", ascending=False)
 
-            def style_horas(val):
-                if val == 0: return 'background-color: #F0F2F6; color: #A0A0A0;' # Gris para inactividad
-                return 'background-color: #E1F5FE; color: #01579B; font-weight: bold;' # Azul para actividad
-            
-            st.dataframe(ranking_h.style.applymap(style_horas), use_container_width=True)
-        else:
-            st.warning("No hay registros para este día.")
+            # Estilo: Centrado y Gradiente en el Total
+            st.dataframe(
+                ranking_h.style.set_properties(**{'text-align': 'center'})
+                .set_table_styles([dict(selector='th', props=[('text-align', 'center')])])
+                .background_gradient(cmap='Blues', subset=['TOTAL']), 
+                use_container_width=True
+            )
 
-        # --- SECCIÓN 2: PRODUCTIVIDAD ACUMULADA (HISTÓRICO CON META 40) ---
+        # --- SECCIÓN 2: RANKING ACUMULADO (CENTRADO + TOTAL DISTINTIVO) ---
         st.divider()
-        st.markdown("🏆 **Ranking de Metas Diarias (Meta: 40 Registros)**")
+        st.markdown("🏆 **Ranking de Metas Diarias (Meta: ≥ 40)**")
         
-        # Filtramos el acumulado por Zonal y Supervisor (afecta a todos los días)
         df_acc = df_registros.copy()
         if zonal_sel != "TODOS": df_acc = df_acc[df_acc["ZONAL"] == zonal_sel]
         if sup_sel != "TODOS": df_acc = df_acc[df_acc["SUPERVISOR"] == sup_sel]
 
         if not df_acc.empty:
-            ranking_d = df_acc.pivot_table(
-                index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", 
-                aggfunc="count", fill_value=0
-            )
-            # Ordenamos: Fechas más recientes primero
+            ranking_d = df_acc.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
             ranking_d = ranking_d.reindex(sorted(ranking_d.columns, reverse=True), axis=1)
+            
+            columnas_fechas = ranking_d.columns.tolist() # Solo fechas
             ranking_d["TOTAL PERIODO"] = ranking_d.sum(axis=1)
             ranking_d = ranking_d.sort_values(by="TOTAL PERIODO", ascending=False)
 
+            # Funciones de Estilo
             def style_meta(val):
                 try:
-                    # Aplicamos el color verde si llega a la meta de 40
-                    if float(val) >= 40: return 'background-color: #90EE90; font-weight: bold;'
+                    if float(val) >= 40: return 'background-color: #90EE90; color: #004D00; font-weight: bold;'
                 except: pass
                 return ''
 
-            # Aplicamos estilo a toda la tabla para resaltar los días ganadores
-            st.dataframe(ranking_d.style.applymap(style_meta), use_container_width=True)
-            st.caption("🟢 Los días donde se alcanzó la meta de 40 gestiones aparecen en verde.")
-        else:
-            st.info("No hay datos históricos para los filtros seleccionados.")
-
-
-# --- BOTÓN DE DESCARGA A EXCEL ---
-            import io
+            # Aplicamos: Centrado general + Verde en fechas + Azul en Total
+            st.dataframe(
+                ranking_d.style.set_properties(**{'text-align': 'center'})
+                .set_table_styles([dict(selector='th', props=[('text-align', 'center')])])
+                .applymap(style_meta, subset=columnas_fechas)
+                .set_properties(subset=['TOTAL PERIODO'], **{'background-color': '#CCE5FF', 'color': '#004085', 'font-weight': bold})
+                , use_container_width=True
+            )
             
-            # Convertimos el ranking a un archivo Excel en memoria
+            # --- BOTÓN DE DESCARGA ---
+            import io
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                ranking_d.to_excel(writer, sheet_name='Ranking_Metas')
+                ranking_d.to_excel(writer, sheet_name='Ranking_Dimiare')
             
-            st.download_button(
-                label="📥 Descargar Ranking Acumulado (Excel)",
-                data=buffer.getvalue(),
-                file_name=f"Ranking_Dimiare_{dia_sel.replace('/','-')}.xlsx",
-                mime="application/vnd.ms-excel",
-                use_container_width=True
-            )
-
-
-
-
+            st.download_button(label="📥 Descargar Reporte a Excel", data=buffer.getvalue(), 
+                               file_name=f"Reporte_Metas_{dia_sel.replace('/','-')}.xlsx",
+                               mime="application/vnd.ms-excel", use_container_width=True)
