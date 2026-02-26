@@ -284,28 +284,25 @@ with tab2:
             st.markdown(f"📋 **Matriz de Productividad ({zonal_sel} - {sup_sel})**")
 
             if not df_final.empty:
-                # 1. Preparación de datos: Limpieza de espacios y mayúsculas
+                # 1. Preparación de datos
                 df_matriz = df_final.copy()
                 df_matriz['DETALLE'] = df_matriz['DETALLE'].astype(str).str.strip().str.upper()
                 df_matriz['NOMBRE VENDEDOR'] = df_matriz['NOMBRE VENDEDOR'].astype(str).str.strip().str.upper()
 
-                # 2. Creamos la Tabla Dinámica (Pivot Table)
-                # Filas: Vendedores | Columnas: Tipos de Gestión (Venta, No-Venta, Referido)
+                # 2. Creamos la Tabla Dinámica
                 tabla_prod = df_matriz.pivot_table(
                     index="NOMBRE VENDEDOR", 
                     columns="DETALLE", 
-                    values="FECHA", # Usamos cualquier columna para contar
+                    values="FECHA", 
                     aggfunc="count", 
                     fill_value=0
                 )
 
-                # 3. Calculamos el Total Acumulado por Vendedor (La meta de 40)
+                # 3. Cálculo de Total y Orden
                 tabla_prod["TOTAL GESTIONES"] = tabla_prod.sum(axis=1)
-                
-                # Ordenamos para que los que más gestionan salgan arriba
                 tabla_prod = tabla_prod.sort_values(by="TOTAL GESTIONES", ascending=False)
 
-                # 4. Estilo de la Tabla
+                # 4. Estilo de la Tabla (Vendedor a la IZQUIERDA, Números CENTRADOS)
                 def resaltar_meta(val):
                     try:
                         if int(val) >= 40:
@@ -313,27 +310,37 @@ with tab2:
                     except: pass
                     return 'text-align: center;'
 
-                # Mostramos la tabla con diseño profesional
                 st.dataframe(
-                    tabla_prod.style.set_properties(**{'text-align': 'center'})
-                    .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}])
-                    .applymap(resaltar_meta, subset=['TOTAL GESTIONES']) # Resalta en verde si llega a 40
+                    tabla_prod.style.set_properties(**{'text-align': 'center'}) # Todo al centro por defecto
+                    .set_properties(subset=pd.IndexSlice[:, []], **{'text-align': 'left'}) # Reservado para el índice
+                    .set_table_styles([
+                        {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#F0F2F6')]},
+                        {'selector': 'td:nth-child(1)', 'props': [('text-align', 'left'), ('font-weight', 'bold')]} # Nombre a la IZQUIERDA
+                    ])
+                    .applymap(resaltar_meta, subset=['TOTAL GESTIONES'])
                     .set_properties(subset=['TOTAL GESTIONES'], **{'background-color': '#CCE5FF', 'color': '#004085', 'font-weight': 'bold'}),
                     use_container_width=True
                 )
 
-                # 5. Resumen rápido en métricas
+                # 5. RESUMEN COMPACTO (Letras más pequeñas para Vendedor Top)
+                st.write("") # Espacio
                 c1, c2, c3 = st.columns(3)
                 total_global = tabla_prod["TOTAL GESTIONES"].sum()
                 vendedor_top = tabla_prod.index[0]
-                
+                promedio = round(total_global/len(tabla_prod), 1)
+
+                # Usamos HTML para controlar el tamaño de la letra
                 with c1:
-                    st.metric("Total Global", f"{total_global} uds.")
+                    st.markdown(f"<div style='text-align: center;'><p style='margin-bottom:0; font-size:14px; color:#555;'>Total Global</p><h3 style='margin-top:0; color:#004085;'>{total_global}</h3></div>", unsafe_allow_html=True)
                 with c2:
-                    st.metric("Vendedor Top", vendedor_top)
+                    st.markdown(f"<div style='text-align: center;'><p style='margin-bottom:0; font-size:14px; color:#555;'>Vendedor Top</p><h4 style='margin-top:0; color:#2E7D32;'>{vendedor_top}</h4></div>", unsafe_allow_html=True)
                 with c3:
-                    st.metric("Promedio x Vendedor", f"{round(total_global/len(tabla_prod), 1)}")
+                    st.markdown(f"<div style='text-align: center;'><p style='margin-bottom:0; font-size:14px; color:#555;'>Promedio x Vend.</p><h3 style='margin-top:0; color:#004085;'>{promedio}</h3></div>", unsafe_allow_html=True)
 
             else:
                 st.warning("No hay datos para generar la matriz con los filtros actuales.")
+
+            else:
+                st.warning("No hay datos para generar la matriz con los filtros actuales.")
+
 
