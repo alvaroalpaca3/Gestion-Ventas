@@ -155,7 +155,6 @@ with tab_personal:
     if nom_v == "N/A":
         st.warning("👈 Ingrese su DNI en la barra lateral.")
     else:
-        # Título simple a la izquierda
         st.markdown(f"##### 📈 Mi Actividad: {nom_v}")
         
         if not df_registros.empty:
@@ -166,61 +165,50 @@ with tab_personal:
             if df_mio.empty:
                 st.info("Sin registros.")
             else:
-           
-             # 1. MONITOR HORARIO (Simplificado para alineación)
-                st.markdown("##### **1. Monitor Diario (Hoy)**")
                 tz = pytz.timezone('America/Lima')
                 hoy = datetime.now(tz).strftime("%d/%m/%Y")
+                
+                # 1. MONITOR DIARIO (HOY)
+                st.markdown("##### **1. Monitor Diario (Hoy)**")
                 df_mio_hoy = df_mio[df_mio["FECHA"] == hoy]
                 
                 if not df_mio_hoy.empty:
                     mi_rh = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
                     mi_rh["TOTAL"] = mi_rh.sum(axis=1)
 
-                    # --- MÉTODO DEFINITIVO: RESET_INDEX ---
-                    # Pasamos el nombre del vendedor de 'índice' a 'columna real'
+                    # Reset index para forzar título VENDEDOR y ocultar 0,1,2
                     mi_rh_final = mi_rh.reset_index()
-                    # Renombramos esa columna específicamente
                     mi_rh_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDOR"}, inplace=True)
 
                     st.dataframe(
                         mi_rh_final, 
                         use_container_width=True,
-                        hide_index=True, # <--- ESTO BORRA DEFINITIVAMENTE LOS NÚMEROS 0,1,2
-                        column_config={
-                            "VENDEDOR": st.column_config.Column(width="medium")
-                        }
+                        hide_index=True,
+                        column_config={"VENDEDOR": st.column_config.Column(width="medium")}
                     ) 
                 else:
                     st.caption(f"Sin actividad hoy {hoy}")
 
-               
-                    
-              # 2. MATRIZ Y DONA (SOLO DÍA PRESENTE)
+                # 2. MATRIZ Y DONA (HOY)
                 st.markdown("##### **2. Matriz de Productividad (Hoy)**")
-                
-                # --- FILTRO CLAVE: Solo registros de hoy ---
-                fecha_hoy = pd.to_datetime("today").strftime('%d/%m/%Y') 
-                df_hoy = df_mio[df_mio["FECHA"] == fecha_hoy]
-
-                if not df_hoy.empty:
-                    # --- 1. PRIMERO: EL CUADRO (MATRIZ) ---
-                    mi_tp = df_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
+                if not df_mio_hoy.empty:
+                    # CUADRO MATRIZ
+                    mi_tp = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
                     mi_tp["TOTAL"] = mi_tp.sum(axis=1)
                     
-                    # Estructura limpia sin números 0,1,2
-                    mi_tp.index.name = "VENDEDOR"
+                    # Reset index para consistencia
+                    mi_tp_final = mi_tp.reset_index()
+                    mi_tp_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDOR"}, inplace=True)
                     
                     st.dataframe(
-                        mi_tp,
+                        mi_tp_final,
                         use_container_width=True,
-                        column_config={
-                            "_index": st.column_config.Column("VENDEDORES", width="medium"),
-                        }
+                        hide_index=True,
+                        column_config={"VENDEDOR": st.column_config.Column(width="medium")}
                     )
 
-                    # --- 2. LUEGO: LA DONA ---
-                    fig_m = px.pie(df_hoy, names='DETALLE', hole=0.5)
+                    # GRÁFICO DONA
+                    fig_m = px.pie(df_mio_hoy, names='DETALLE', hole=0.5)
                     fig_m.update_layout(
                         margin=dict(t=20, b=0, l=0, r=0),
                         height=250,
@@ -228,25 +216,33 @@ with tab_personal:
                         legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5)
                     )
                     st.plotly_chart(fig_m, use_container_width=True)
-                    
                 else:
                     st.info("Aún no tienes registros guardados hoy.")
 
-              # 3. AVANCE DEL MES (RANKING)
-                st.markdown("##### **1. Monitor Diario (Hoy)**")
-                tz = pytz.timezone('America/Lima')
-                hoy = datetime.now(tz).strftime("%d/%m/%Y")
-                df_mio_hoy = df_mio[df_mio["FECHA"] == hoy]
-                
-                if not df_mio_hoy.empty:
-                    mi_rh = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
-                    mi_rh["TOTAL"] = mi_rh.sum(axis=1)
-                    # Forzamos alineación izquierda total
-                    st.table(mi_rh) 
-                else:
-                    st.caption(f"Sin actividad hoy {hoy}"
-                )
-            
+                # 3. AVANCE DEL MES (RANKING)
+                st.markdown("##### **3. Avance del Mes**")
+                if not df_mio.empty:
+                    mi_rd = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
+                    # Ordenar fechas de más reciente a más antigua
+                    mi_rd = mi_rd.reindex(sorted(mi_rd.columns, reverse=True), axis=1)
+                    mi_rd["TOTAL"] = mi_rd.sum(axis=1)
+                    
+                    # Reset index y aplicación de estilo
+                    mi_rd_final = mi_rd.reset_index()
+                    mi_rd_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDOR"}, inplace=True)
+                    
+                    st.dataframe(
+                        mi_rd_final.style.applymap(
+                            lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', 
+                            subset=mi_rd_final.columns[1:-1]
+                        ), 
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "VENDEDOR": st.column_config.Column(width="medium", pinned=True),
+                            "TOTAL": st.column_config.Column(width="small")
+                        }
+                    )
         else:
             st.error("Error al cargar registros.")
 
@@ -374,6 +370,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
