@@ -188,18 +188,7 @@ with tab_personal:
                 fecha_hoy = pd.to_datetime("today").strftime('%d/%m/%Y') 
                 # Asegúrate de que el formato '%d/%m/%Y' coincida con tu columna FECHA
                 df_hoy = df_mio[df_mio["FECHA"] == fecha_hoy]
-
-                if not df_hoy.empty:
-                    # Dona alineada a la izquierda con datos de HOY
-                    fig_m = px.pie(df_hoy, names='DETALLE', hole=0.5)
-                    fig_m.update_layout(
-                        margin=dict(t=0, b=0, l=0, r=0),
-                        height=220,
-                        showlegend=True,
-                        legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=0)
-                    )
-                    st.plotly_chart(fig_m, use_container_width=True)
-                    
+                  
                     # Tabla dinámica con datos de HOY
                     mi_tp = df_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
                     mi_tp["TOTAL"] = mi_tp.sum(axis=1)
@@ -213,6 +202,18 @@ with tab_personal:
                             "_index": st.column_config.Column("VENDEDORES", width="medium"),
                         }
                     )
+
+                                if not df_hoy.empty:
+                    # Dona alineada a la izquierda con datos de HOY
+                    fig_m = px.pie(df_hoy, names='DETALLE', hole=0.5)
+                    fig_m.update_layout(
+                        margin=dict(t=0, b=0, l=0, r=0),
+                        height=220,
+                        showlegend=True,
+                        legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=0)
+                    )
+                    st.plotly_chart(fig_m, use_container_width=True)
+                                    
                 else:
                     st.info("Aún no tienes registros guardados hoy.")
                     
@@ -354,6 +355,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
