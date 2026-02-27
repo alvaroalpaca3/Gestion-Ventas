@@ -271,49 +271,42 @@ with tab2:
                 use_container_width=True
             )
 
-# 3. MATRIZ PRODUCTIVIDAD
+# 3. MATRIZ PRODUCTIVIDAD (VERSIÓN FINAL LIMPIA)
             st.divider()
             st.markdown(f"##### **3. Matriz de Productividad ({z_sel})**")
             
             # Crear la tabla base
             tp = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
             
-            # 1. Calcular Total Horizontal
+            # 1. Totales
             tp["TOTAL"] = tp.sum(axis=1)
             tp = tp.sort_values(by="TOTAL", ascending=False)
             
-            # 2. Calcular Total Vertical
+            # 2. Fila de Totales Verticales
             df_totales_v = pd.DataFrame(tp.sum()).T
             df_totales_v.index = ["TOTAL GENERAL"]
             
-            # 3. Unir tablas
+            # 3. Unir
             tp_final = pd.concat([tp, df_totales_v])
 
-            # --- LIMPIEZA TOTAL DE ÍNDICES (PARA ELIMINAR 0, 1, 2, 3) ---
-            tp_mostrar = tp_final.reset_index()
-            tp_mostrar.columns.values[0] = "VENDEDORES"
+            # --- ESTA ES LA PARTE CLAVE ---
+            # Ponemos el nombre "VENDEDORES" al índice
+            tp_final.index.name = "VENDEDORES"
 
-            # Convertimos a HTML para forzar la eliminación de la columna de números
-            # index=False es el truco mágico aquí
-            html_tabla = tp_mostrar.to_html(index=False, classes='table table-striped')
-            
-            # Aplicamos un poco de estilo CSS para que se vea igual que st.table pero sin números
-            st.markdown(
-                f"""
-                <style>
-                    .renderjson {{ text-align: left; }}
-                    table {{ width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 14px; }}
-                    th {{ background-color: #f0f2f6; text-align: left; padding: 8px; border: 1px solid #dee2e6; }}
-                    td {{ text-align: left; padding: 8px; border: 1px solid #dee2e6; }}
-                    tr:last-child {{ background-color: #FFEB9C; font-weight: bold; }}
-                </style>
-                {html_tabla}
-                """, 
-                unsafe_allow_html=True
+            # Mostramos con st.dataframe (en lugar de st.table) 
+            # porque permite ocultar la columna de números fácilmente
+            st.dataframe(
+                tp_final.style.set_properties(**{'text-align': 'left'})
+                .set_properties(subset=(['TOTAL GENERAL'], slice(None)), **{'background-color': '#FFEB9C', 'font-weight': 'bold'}),
+                use_container_width=True,
+                column_config={
+                    "_index": st.column_config.Column("VENDEDORES", width="medium")
+                }
             )
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
