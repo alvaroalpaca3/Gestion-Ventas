@@ -180,6 +180,43 @@ with tab_personal:
                 else:
                     st.caption(f"Sin actividad hoy {hoy}")
 
+
+                # 3. MATRIZ Y DONA (SOLO DÍA PRESENTE)
+                st.markdown("##### **3. Matriz de Productividad (Hoy)**")
+                
+                # --- FILTRO CLAVE: Solo registros de hoy ---
+                fecha_hoy = pd.to_datetime("today").strftime('%d/%m/%Y') 
+                # Asegúrate de que el formato '%d/%m/%Y' coincida con tu columna FECHA
+                df_hoy = df_mio[df_mio["FECHA"] == fecha_hoy]
+
+                if not df_hoy.empty:
+                    # Dona alineada a la izquierda con datos de HOY
+                    fig_m = px.pie(df_hoy, names='DETALLE', hole=0.5)
+                    fig_m.update_layout(
+                        margin=dict(t=0, b=0, l=0, r=0),
+                        height=220,
+                        showlegend=True,
+                        legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=0)
+                    )
+                    st.plotly_chart(fig_m, use_container_width=True)
+                    
+                    # Tabla dinámica con datos de HOY
+                    mi_tp = df_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
+                    mi_tp["TOTAL"] = mi_tp.sum(axis=1)
+                    
+                    # --- APLICANDO TU ESTRUCTURA CLAVE (Sin números 0,1,2 y alineado) ---
+                    mi_tp.index.name = "VENDEDORES"
+                    st.dataframe(
+                        mi_tp,
+                        use_container_width=True,
+                        column_config={
+                            "_index": st.column_config.Column("VENDEDORES", width="medium"),
+                        }
+                    )
+                else:
+                    st.info("Aún no tienes registros guardados hoy.")
+                    
+
                 # 2. AVANCE DEL MES (RANKING)
                 st.markdown("##### **2. Avance del Mes**")
                 mi_rd = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
@@ -189,22 +226,6 @@ with tab_personal:
                 # st.table es más "estático" y respeta mejor la izquierda que st.dataframe
                 st.table(mi_rd.style.applymap(lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', subset=mi_rd.columns[:-1]))
 
-                # 3. MATRIZ Y DONA
-                st.markdown("##### **3. Matriz de Productividad**")
-                
-                # Dona alineada a la izquierda
-                fig_m = px.pie(df_mio, names='DETALLE', hole=0.5)
-                fig_m.update_layout(
-                    margin=dict(t=0, b=0, l=0, r=0),
-                    height=220,
-                    showlegend=True,
-                    legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=0)
-                )
-                st.plotly_chart(fig_m, use_container_width=True)
-                
-                mi_tp = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
-                mi_tp["TOTAL"] = mi_tp.sum(axis=1)
-                st.table(mi_tp)
 
         else:
             st.error("Error al cargar registros.")
@@ -333,6 +354,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
