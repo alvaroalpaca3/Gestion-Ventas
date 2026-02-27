@@ -246,7 +246,7 @@ with tab2:
             else:
                 st.info("No hay datos para esta fecha.")
 
-# 2. RANKING METAS (SIN NÚMEROS 0,1,2,3)
+# 2. RANKING METAS (ESTILO SEGMENTO 3)
             st.divider()
             st.markdown("##### **2. Ranking Metas (Meta ≥ 40)**")
             
@@ -258,29 +258,18 @@ with tab2:
             rd = rd.reindex(sorted(rd.columns, reverse=True), axis=1)
             rd["TOTAL ACUM"] = rd.sum(axis=1)
             
-            # Limpieza y nombre de columna
-            rd_mostrar = rd.sort_values(by="TOTAL ACUM", ascending=False).reset_index()
-            rd_mostrar.columns.values[0] = "VENDEDORES" 
+            # Ordenamos por el total
+            rd = rd.sort_values(by="TOTAL ACUM", ascending=False)
 
-            # --- TRUCO FINAL: CONVERSIÓN A HTML SIN ÍNDICE ---
-            # index=False elimina los números 0,1,2 definitivamente
-            html_ranking = rd_mostrar.to_html(index=False, classes='table table-striped', border=0)
-
-            # Inyectamos el HTML con CSS para que se vea igual a Streamlit
-            st.markdown(
-                f"""
-                <style>
-                    .mystyle {{ width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 13px; }}
-                    .mystyle th {{ background-color: #f0f2f6; text-align: left; padding: 10px; border-bottom: 2px solid #dee2e6; }}
-                    .mystyle td {{ text-align: left; padding: 10px; border-bottom: 1px solid #dee2e6; }}
-                    /* Pintar de verde si el valor es >= 40 (excepto primera y última columna) */
-                </style>
-                <div style="overflow-x: auto;">
-                    {html_ranking.replace('class="table table-striped"', 'class="mystyle"')}
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
+            # --- EL TRUCO PARA BORRAR LOS NÚMEROS Y MOSTRAR "VENDEDORES" ---
+            # 1. Ponemos el nombre a la esquina (VENDEDORES)
+            rd.index.name = "VENDEDORES"
+            
+            # 2. Mostramos usando st.table con el estilo del segmento 3
+            st.table(rd.style.applymap(
+                lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', 
+                subset=rd.columns[:-1]
+            ).set_properties(**{'text-align': 'left', 'font-size': '12px'}))
 
             # --- BOTÓN DE DESCARGA (UBICADO AQUÍ SEGÚN TU PEDIDO) ---
             buf = io.BytesIO()
@@ -329,6 +318,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
