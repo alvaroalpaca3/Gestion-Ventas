@@ -261,9 +261,7 @@ with tab_personal:
                         "TOTAL": st.column_config.Column(width="small")
                     }
                 )
-                )
-
-
+            
         else:
             st.error("Error al cargar registros.")
 
@@ -391,6 +389,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
