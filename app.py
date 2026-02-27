@@ -278,28 +278,30 @@ with tab2:
             # Crear la tabla base
             tp = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
             
-            # 1. Calcular Total Horizontal (por vendedor)
+            # 1. Calcular Total Horizontal
             tp["TOTAL"] = tp.sum(axis=1)
-            
-            # Ordenar por el total antes de añadir la fila de suma global
             tp = tp.sort_values(by="TOTAL", ascending=False)
             
-            # 2. Calcular Total Vertical (Suma de cada columna)
+            # 2. Calcular Total Vertical
             df_totales_v = pd.DataFrame(tp.sum()).T
             df_totales_v.index = ["TOTAL GENERAL"]
             
-            # 3. Unir la tabla ordenada con la fila de totales
+            # 3. Unir tablas
             tp_final = pd.concat([tp, df_totales_v])
 
-            # ASIGNAR NOMBRE A LA COLUMNA DE ÍNDICE (La esquina que marcaste con la X)
-            tp_final.index.name = "VENDEDORES"
+            # --- EL TRUCO PARA MOSTRAR "VENDEDORES" ---
+            # Pasamos el índice a una columna y le ponemos el nombre que queremos
+            tp_mostrar = tp_final.reset_index().rename(columns={'index': 'VENDEDORES'})
 
-            # st.table para mantener la estética uniforme a la izquierda
-            st.table(tp_final.style.set_properties(**{'text-align': 'left', 'font-size': '12px'})
-                     .set_properties(subset=(['TOTAL GENERAL'], slice(None)), **{'background-color': '#FFEB9C', 'font-weight': 'bold'}))
+            # Mostramos la tabla (ocultando el índice automático de números que crea Streamlit)
+            st.table(tp_mostrar.style.set_properties(**{'text-align': 'left', 'font-size': '12px'})
+                     .hide_index()  # Esencial para que no salgan números 0, 1, 2 al costado
+                     .set_properties(subset=pd.IndexSlice[tp_mostrar['VENDEDORES'] == 'TOTAL GENERAL', :], 
+                                     **{'background-color': '#FFEB9C', 'font-weight': 'bold'}))
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
