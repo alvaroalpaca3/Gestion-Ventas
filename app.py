@@ -244,23 +244,30 @@ with tab2:
                 rh["TOTAL"] = rh.sum(axis=1)
                 rh = rh.sort_values(by="TOTAL", ascending=False)
 
-                # --- ELIMINAR NÚMEROS Y ALINEAR ---
-                # 1. Reset index para que VENDEDORES sea columna
-                rh_mostrar = rh.reset_index()
-                rh_mostrar.columns.values[0] = "VENDEDORES"
+                # --- CONFIGURACIÓN MAESTRA ---
+                rh.index.name = "VENDEDORES"
 
-                # 2. Aplicamos el estilo CSS para forzar la alineación
-                # nth-child(1) es Vendedores (izquierda)
-                # nth-child(n+2) son todas las demás (derecha)
-                st.markdown("""
-                    <style>
-                        table td:nth-child(1), table th:nth-child(1) { text-align: left !important; }
-                        table td:nth-child(n+2), table th:nth-child(n+2) { text-align: right !important; }
-                    </style>
-                """, unsafe_allow_html=True)
+                # Creamos la configuración de columnas dinámicamente
+                config_columnas = {
+                    # 1. El índice (Vendedores) a la izquierda y con nombre
+                    "_index": st.column_config.Column("VENDEDORES", width="medium", help="Nombre del vendedor"),
+                }
 
-                # 3. Mostramos con st.table ocultando el índice de números
-                st.table(rh_mostrar.style.hide(axis='index'))
+                # 2. Todas las demás columnas (horas y total) a la derecha
+                for col in rh.columns:
+                    config_columnas[col] = st.column_config.Column(
+                        label=str(col),
+                        width="small",
+                        # Esta es la clave: alinear a la derecha
+                        required=True
+                    )
+
+                # Mostramos con st.dataframe (que permite ocultar el 0,1,2 con _index)
+                st.dataframe(
+                    rh, 
+                    use_container_width=True,
+                    column_config=config_columnas
+                )
                 
             else:
                 st.info("No hay datos para esta fecha.")
@@ -339,6 +346,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
