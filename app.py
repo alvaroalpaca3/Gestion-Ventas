@@ -246,29 +246,41 @@ with tab2:
             else:
                 st.info("No hay datos para esta fecha.")
 
-# 2. RANKING METAS
+# 2. RANKING METAS (SIN NÚMEROS 0,1,2,3)
             st.divider()
             st.markdown("##### **2. Ranking Metas (Meta ≥ 40)**")
             
             df_ranking = df_f.copy()
-            # Fecha corta
+            # Fecha corta DD/MM
             df_ranking["FECHA_CORTE"] = pd.to_datetime(df_ranking["FECHA"], dayfirst=True).dt.strftime('%d/%m')
             
             rd = df_ranking.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA_CORTE", values="DETALLE", aggfunc="count", fill_value=0)
             rd = rd.reindex(sorted(rd.columns, reverse=True), axis=1)
             rd["TOTAL ACUM"] = rd.sum(axis=1)
             
-            # Reset index y renombramos
+            # Limpieza y nombre de columna
             rd_mostrar = rd.sort_values(by="TOTAL ACUM", ascending=False).reset_index()
             rd_mostrar.columns.values[0] = "VENDEDORES" 
 
-            # --- LA SOLUCIÓN DEFINITIVA ---
-            # En lugar de st.table(df), usamos st.write con formato de tabla
-            # Esto fuerza a Streamlit a no poner índices numéricos
-            st.write(rd_mostrar.style.applymap(
-                lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', 
-                subset=rd_mostrar.columns[1:-1]
-            ).set_properties(**{'text-align': 'left', 'font-size': '12px'}).hide(axis='index'))
+            # --- TRUCO FINAL: CONVERSIÓN A HTML SIN ÍNDICE ---
+            # index=False elimina los números 0,1,2 definitivamente
+            html_ranking = rd_mostrar.to_html(index=False, classes='table table-striped', border=0)
+
+            # Inyectamos el HTML con CSS para que se vea igual a Streamlit
+            st.markdown(
+                f"""
+                <style>
+                    .mystyle {{ width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 13px; }}
+                    .mystyle th {{ background-color: #f0f2f6; text-align: left; padding: 10px; border-bottom: 2px solid #dee2e6; }}
+                    .mystyle td {{ text-align: left; padding: 10px; border-bottom: 1px solid #dee2e6; }}
+                    /* Pintar de verde si el valor es >= 40 (excepto primera y última columna) */
+                </style>
+                <div style="overflow-x: auto;">
+                    {html_ranking.replace('class="table table-striped"', 'class="mystyle"')}
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
 
             # --- BOTÓN DE DESCARGA (UBICADO AQUÍ SEGÚN TU PEDIDO) ---
             buf = io.BytesIO()
@@ -317,6 +329,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
