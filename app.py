@@ -291,24 +291,6 @@ with tab2:
             # 3. Unir la tabla ordenada con la fila de totales
             tp_final = pd.concat([tp, df_totales_v])
 
-            # Insertar etiqueta en la esquina superior izquierda y alinear a la izquierda
-st.markdown("""
-    <style>
-        /* Selecciona la primera celda del encabezado (la esquina vacía) */
-        th:first-child:empty::after {
-            content: "VENDEDORES";
-            color: black;
-            font-weight: bold;
-            display: block;
-            text-align: left; /* Asegura la alineación de la nueva etiqueta */
-        }
-        
-        /* Fuerza la alineación a la izquierda para el resto de los encabezados de texto */
-        th {
-            text-align: left !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
             # st.table para mantener la estética uniforme a la izquierda
             # He añadido un estilo para resaltar la fila de TOTAL GENERAL en amarillo claro
             st.table(tp_final.style.set_properties(**{'text-align': 'left', 'font-size': '12px'})
@@ -316,6 +298,7 @@ st.markdown("""
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
