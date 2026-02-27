@@ -334,10 +334,8 @@ with tab2:
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
 
-import streamlit as st
-import pandas as pd
 # Asumiendo que usas gspread para Google Sheets o similar para Excel en Drive
-
+with tab3:
 def pestaña_mantenimiento():
     st.markdown("### 🛠️ Registro de Nuevos Vendedores")
     st.info("Complete los datos para añadir un nuevo vendedor a la base maestra de Google Drive.")
@@ -387,3 +385,4 @@ def pestaña_mantenimiento():
     st.markdown("##### **Vendedores actuales en el sistema**")
     # Aquí podrías mostrar la tabla actual (usando el formato que ya nos gustó)
     # st.dataframe(df_actual, use_container_width=True)
+
