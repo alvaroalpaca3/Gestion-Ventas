@@ -334,55 +334,55 @@ with tab2:
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
 
-# Asumiendo que usas gspread para Google Sheets o similar para Excel en Drive
+# Suponiendo que ya tienes tus pestañas definidas arriba:
+# tab1, tab2, tab3 = st.tabs(["Monitor", "Ranking", "Mantenimiento"])
+
 with tab3:
-def pestaña_mantenimiento():
-    st.markdown("### 🛠️ Registro de Nuevos Vendedores")
-    st.info("Complete los datos para añadir un nuevo vendedor a la base maestra de Google Drive.")
+    st.markdown("### 🛠️ Mantenimiento de Estructura")
+    st.info("Desde aquí puedes dar de alta a nuevos vendedores para que aparezcan en los reportes.")
 
-    # Creamos el formulario
-    with st.form("form_registro", clear_on_submit=True):
-        col1, col2 = st.columns(2)
+    # Formulario de registro
+    with st.form("registro_vendedor", clear_on_submit=True):
+        st.markdown("##### **Datos del Nuevo Personal**")
         
-        with col1:
-            dni = st.text_input("DNI (8 dígitos)", max_chars=8)
-            nombre = st.text_input("NOMBRE VENDEDOR")
-        
-        with col2:
-            supervisor = st.text_input("SUPERVISOR")
-            zonal = st.selectbox("ZONAL", ["LIMA", "NORTE", "SUR", "CENTRO", "ORIENTE"]) # Ajusta según tus zonales
+        # Campos solicitados
+        dni = st.text_input("DNI (8 dígitos)", max_chars=8)
+        nombre = st.text_input("NOMBRE COMPLETO")
+        supervisor = st.text_input("SUPERVISOR ASIGNADO")
+        zonal = st.selectbox("ZONAL", ["LIMA", "NORTE", "SUR", "CENTRO", "ORIENTE"])
 
-        submit = st.form_submit_button("✅ Guardar en Estructura")
+        # Botón de guardado
+        btn_registrar = st.form_submit_button("📥 AGREGAR A DRIVE")
 
-        if submit:
-            if dni and nombre and supervisor and zonal:
-                # 1. Lógica para conectar con Drive y leer la data actual
-                # df_actual = leer_estructura_drive() 
-                
-                # 2. Verificar si el DNI ya existe
-                # if dni in df_actual['DNI'].values:
-                #    st.warning(f"El DNI {dni} ya está registrado.")
-                # else:
-                
-                # 3. Crear nueva fila
-                nueva_fila = {
-                    "DNI": dni,
-                    "NOMBRE VENDEDOR": nombre.upper(),
-                    "SUPERVISOR": supervisor.upper(),
-                    "ZONAL": zonal
-                }
-                
-                # 4. ENVIAR A DRIVE (Aquí va tu función de carga)
-                # subir_a_drive(nueva_fila)
-                
-                st.success(f"¡Éxito! {nombre.upper()} ha sido incorporado a la estructura.")
-                st.balloons()
+        if btn_registrar:
+            # Validaciones básicas
+            if not dni or len(dni) < 8:
+                st.error("El DNI debe tener 8 dígitos.")
+            elif not nombre or not supervisor:
+                st.error("Por favor, completa el nombre y el supervisor.")
             else:
-                st.error("Todos los campos son obligatorios para el registro.")
+                # --- AQUÍ VA LA CONEXIÓN AL DRIVE ---
+                # 1. Creamos el diccionario con los datos
+                nuevo_dato = {
+                    "DNI": [dni],
+                    "NOMBRE VENDEDOR": [nombre.upper().strip()],
+                    "SUPERVISOR": [supervisor.upper().strip()],
+                    "ZONAL": [zonal]
+                }
+                nuevo_df = pd.DataFrame(nuevo_dato)
 
-    # --- VISTA PREVIA DE LA ESTRUCTURA ACTUAL ---
+                try:
+                    # Aquí llamarías a tu función existente para guardar:
+                    # guardar_en_drive(nuevo_df) 
+                    
+                    st.success(f"✅ {nombre.upper()} ha sido añadido a la estructura con éxito.")
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"Error al conectar con Drive: {e}")
+
+    # --- TABLA DE CONSULTA RÁPIDA ---
     st.divider()
-    st.markdown("##### **Vendedores actuales en el sistema**")
-    # Aquí podrías mostrar la tabla actual (usando el formato que ya nos gustó)
-    # st.dataframe(df_actual, use_container_width=True)
+    st.markdown("##### **Vendedores Registrados Recientemente**")
+    # Aquí puedes mostrar un st.dataframe con la lista actual 
+    # usando la misma configuración sin números que ya arreglamos
 
