@@ -52,7 +52,7 @@ if "form_key" not in st.session_state: st.session_state.form_key = 0
 # --- 4. BARRA LATERAL ---
 st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
 st.sidebar.title("👤 Acceso Vendedor")
-dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=8)
+dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=10)
 dni_clean = "".join(filter(str.isdigit, dni_input)).zfill(8)
 
 vendedor = df_maestro[df_maestro['DNI'] == dni_clean] if not df_maestro.empty else pd.DataFrame()
@@ -368,6 +368,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
