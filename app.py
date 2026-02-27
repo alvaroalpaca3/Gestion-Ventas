@@ -238,11 +238,23 @@ with tab2:
             st.divider()
             st.markdown("##### **1. Monitor Horario (Día Seleccionado)**")
             df_h = df_f[df_f["FECHA"] == dia_sel]
+            
             if not df_h.empty:
+                # Crear la tabla dinámica
                 rh = df_h.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
                 rh["TOTAL"] = rh.sum(axis=1)
-                # st.table para asegurar alineación a la izquierda
-                st.table(rh.sort_values(by="TOTAL", ascending=False))
+                rh = rh.sort_values(by="TOTAL", ascending=False)
+
+                # --- ESTRUCTURA CLAVE PARA UNIFORMIDAD ---
+                rh.index.name = "VENDEDORES"
+
+                st.dataframe(
+                    rh.style.set_properties(**{'text-align': 'left'}),
+                    use_container_width=True,
+                    column_config={
+                        "_index": st.column_config.Column("VENDEDORES", width="medium")
+                    }
+                )
             else:
                 st.info("No hay datos para esta fecha.")
 
@@ -320,6 +332,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
