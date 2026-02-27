@@ -232,7 +232,7 @@ with tab_personal:
                 else:
                     st.info("Aún no tienes registros guardados hoy.")
 
-                # 3. AVANCE DEL MES (RANKING)
+              # 3. AVANCE DEL MES (RANKING)
                 st.markdown("##### **3. Avance del Mes**")
                 
                 # Creamos la tabla dinámica
@@ -260,6 +260,7 @@ with tab_personal:
                         "VENDEDORES": st.column_config.Column(width="medium", pinned=True),
                         "TOTAL": st.column_config.Column(width="small")
                     }
+                )
                 )
 
 
@@ -390,6 +391,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
