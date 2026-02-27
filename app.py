@@ -233,33 +233,18 @@ with tab_personal:
                     st.info("Aún no tienes registros guardados hoy.")
 
               # 3. AVANCE DEL MES (RANKING)
-                st.markdown("##### **3. Avance del Mes**")
-                
-                # Creamos la tabla dinámica
-                mi_rd = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
-                mi_rd = mi_rd.reindex(sorted(mi_rd.columns, reverse=True), axis=1)
-                mi_rd["TOTAL"] = mi_rd.sum(axis=1)
-
-                # --- MÉTODO DEFINITIVO PARA CABECERA Y SIN NÚMEROS ---
-                # 1. Pasamos el índice a columna y renombramos
-                mi_rd_final = mi_rd.reset_index()
-                mi_rd_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDORES"}, inplace=True)
-
-                # 2. Aplicamos el estilo de color verde (opcional, pero mantiene tu lógica)
-                estilo_ranking = mi_rd_final.style.applymap(
-                    lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', 
-                    subset=mi_rd_final.columns[1:-1] # Excluimos 'VENDEDORES' y 'TOTAL' del color
-                )
-
-                # 3. Mostramos con st.dataframe
-                st.dataframe(
-                    estilo_ranking, 
-                    use_container_width=True,
-                    hide_index=True, # Borra los números 0, 1, 2...
-                    column_config={
-                        "VENDEDORES": st.column_config.Column(width="medium", pinned=True),
-                        "TOTAL": st.column_config.Column(width="small")
-                    }
+                st.markdown("##### **1. Monitor Diario (Hoy)**")
+                tz = pytz.timezone('America/Lima')
+                hoy = datetime.now(tz).strftime("%d/%m/%Y")
+                df_mio_hoy = df_mio[df_mio["FECHA"] == hoy]
+                
+                if not df_mio_hoy.empty:
+                    mi_rh = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
+                    mi_rh["TOTAL"] = mi_rh.sum(axis=1)
+                    # Forzamos alineación izquierda total
+                    st.table(mi_rh) 
+                else:
+                    st.caption(f"Sin actividad hoy {hoy}"
                 )
             
         else:
@@ -389,6 +374,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
