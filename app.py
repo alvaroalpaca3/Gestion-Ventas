@@ -100,7 +100,7 @@ with tab1:
             with cb:
                 dir_ins = st.text_input("Dirección *").upper()
                 c1 = st.text_input("Celular 1 *", max_chars=9)
-                n_ped = st.text_input("N° Pedido *", max_chars=10)
+                n_ped = st.text_input("N° Orden *", max_chars=10)
                 mail = st.text_input("Email *")
                 c_fe = st.text_input("Código FE *", max_chars=13)
 
@@ -368,6 +368,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
