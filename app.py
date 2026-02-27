@@ -166,34 +166,35 @@ with tab_personal:
             if df_mio.empty:
                 st.info("Sin registros.")
             else:
-             # 1. MONITOR HORARIO (Simplificado para alineación)
+           
+                # 1. MONITOR HORARIO (Simplificado para alineación)
 
-               st.markdown("##### **1. Monitor Diario (Hoy)**")
-               tz = pytz.timezone('America/Lima')
-               hoy = datetime.now(tz).strftime("%d/%m/%Y")
-               df_mio_hoy = df_mio[df_mio["FECHA"] == hoy]
+              st.markdown("##### **1. Monitor Diario (Hoy)**")
+                tz = pytz.timezone('America/Lima')
+                hoy = datetime.now(tz).strftime("%d/%m/%Y")
+                df_mio_hoy = df_mio[df_mio["FECHA"] == hoy]
                 
-               if not df_mio_hoy.empty:
-                   mi_rh = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
-                   mi_rh["TOTAL"] = mi_rh.sum(axis=1)
+                if not df_mio_hoy.empty:
+                    mi_rh = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
+                    mi_rh["TOTAL"] = mi_rh.sum(axis=1)
 
-                    # --- ESTA ES LA PARTE CLAVE ---
-                    # 1. Ponemos el nombre a la cabecera del índice
-                    mi_rh.index.name = "VENDEDORES"
+                    # --- MÉTODO DEFINITIVO: RESET_INDEX ---
+                    # Pasamos el nombre del vendedor de 'índice' a 'columna real'
+                    mi_rh_final = mi_rh.reset_index()
+                    # Renombramos esa columna específicamente
+                    mi_rh_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDORES"}, inplace=True)
 
-                    # 2. Usamos st.dataframe para ocultar los números 0, 1, 2...
                     st.dataframe(
-                        mi_rh, 
+                        mi_rh_final, 
                         use_container_width=True,
+                        hide_index=True, # <--- ESTO BORRA DEFINITIVAMENTE LOS NÚMEROS 0,1,2
                         column_config={
-                            # Esto hace que la columna de nombres se llame VENDEDORES y no salgan números
-                            "_index": st.column_config.Column("VENDEDORES", width="medium")
+                            "VENDEDORES": st.column_config.Column(width="medium")
                         }
                     ) 
                 else:
                     st.caption(f"Sin actividad hoy {hoy}")
-
-
+                    
               # 2. MATRIZ Y DONA (SOLO DÍA PRESENTE)
                 st.markdown("##### **2. Matriz de Productividad (Hoy)**")
                 
@@ -367,6 +368,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
