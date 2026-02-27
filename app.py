@@ -289,18 +289,19 @@ with tab2:
             # 3. Unir tablas
             tp_final = pd.concat([tp, df_totales_v])
 
-            # --- EL TRUCO PARA MOSTRAR "VENDEDORES" ---
-            # Pasamos el índice a una columna y le ponemos el nombre que queremos
-            tp_mostrar = tp_final.reset_index().rename(columns={'index': 'VENDEDORES'})
+            # --- SOLUCIÓN PARA LA ETIQUETA "VENDEDORES" SIN ERRORES ---
+            # Convertimos el índice en la primera columna para que tenga encabezado
+            tp_mostrar = tp_final.reset_index()
+            tp_mostrar.columns.values[0] = "VENDEDORES" # Renombramos la primera columna
 
-            # Mostramos la tabla (ocultando el índice automático de números que crea Streamlit)
+            # Mostramos la tabla
+            # Usamos hide() o simplemente no mostramos el índice de números
             st.table(tp_mostrar.style.set_properties(**{'text-align': 'left', 'font-size': '12px'})
-                     .hide_index()  # Esencial para que no salgan números 0, 1, 2 al costado
-                     .set_properties(subset=pd.IndexSlice[tp_mostrar['VENDEDORES'] == 'TOTAL GENERAL', :], 
-                                     **{'background-color': '#FFEB9C', 'font-weight': 'bold'}))
+                     .apply(lambda x: ['background-color: #FFEB9C; font-weight: bold' if x['VENDEDORES'] == 'TOTAL GENERAL' else '' for _ in x], axis=1))
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
