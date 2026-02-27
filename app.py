@@ -181,14 +181,14 @@ with tab_personal:
                     # Pasamos el nombre del vendedor de 'índice' a 'columna real'
                     mi_rh_final = mi_rh.reset_index()
                     # Renombramos esa columna específicamente
-                    mi_rh_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDORES"}, inplace=True)
+                    mi_rh_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDOR"}, inplace=True)
 
                     st.dataframe(
                         mi_rh_final, 
                         use_container_width=True,
                         hide_index=True, # <--- ESTO BORRA DEFINITIVAMENTE LOS NÚMEROS 0,1,2
                         column_config={
-                            "VENDEDORES": st.column_config.Column(width="medium")
+                            "VENDEDOR": st.column_config.Column(width="medium")
                         }
                     ) 
                 else:
@@ -209,7 +209,7 @@ with tab_personal:
                     mi_tp["TOTAL"] = mi_tp.sum(axis=1)
                     
                     # Estructura limpia sin números 0,1,2
-                    mi_tp.index.name = "VENDEDORES"
+                    mi_tp.index.name = "VENDEDOR"
                     
                     st.dataframe(
                         mi_tp,
@@ -234,12 +234,33 @@ with tab_personal:
 
                 # 3. AVANCE DEL MES (RANKING)
                 st.markdown("##### **3. Avance del Mes**")
+                
+                # Creamos la tabla dinámica
                 mi_rd = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
                 mi_rd = mi_rd.reindex(sorted(mi_rd.columns, reverse=True), axis=1)
                 mi_rd["TOTAL"] = mi_rd.sum(axis=1)
-                
-                # st.table es más "estático" y respeta mejor la izquierda que st.dataframe
-                st.table(mi_rd.style.applymap(lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', subset=mi_rd.columns[:-1]))
+
+                # --- MÉTODO DEFINITIVO PARA CABECERA Y SIN NÚMEROS ---
+                # 1. Pasamos el índice a columna y renombramos
+                mi_rd_final = mi_rd.reset_index()
+                mi_rd_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDORES"}, inplace=True)
+
+                # 2. Aplicamos el estilo de color verde (opcional, pero mantiene tu lógica)
+                estilo_ranking = mi_rd_final.style.applymap(
+                    lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', 
+                    subset=mi_rd_final.columns[1:-1] # Excluimos 'VENDEDORES' y 'TOTAL' del color
+                )
+
+                # 3. Mostramos con st.dataframe
+                st.dataframe(
+                    estilo_ranking, 
+                    use_container_width=True,
+                    hide_index=True, # Borra los números 0, 1, 2...
+                    column_config={
+                        "VENDEDORES": st.column_config.Column(width="medium", pinned=True),
+                        "TOTAL": st.column_config.Column(width="small")
+                    }
+                )
 
 
         else:
@@ -369,6 +390,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
