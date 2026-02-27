@@ -166,17 +166,30 @@ with tab_personal:
             if df_mio.empty:
                 st.info("Sin registros.")
             else:
-                # 1. MONITOR HORARIO (Simplificado para alineación)
-                st.markdown("##### **1. Monitor Diario (Hoy)**")
-                tz = pytz.timezone('America/Lima')
-                hoy = datetime.now(tz).strftime("%d/%m/%Y")
-                df_mio_hoy = df_mio[df_mio["FECHA"] == hoy]
+             # 1. MONITOR HORARIO (Simplificado para alineación)
+
+               st.markdown("##### **1. Monitor Diario (Hoy)**")
+               tz = pytz.timezone('America/Lima')
+               hoy = datetime.now(tz).strftime("%d/%m/%Y")
+               df_mio_hoy = df_mio[df_mio["FECHA"] == hoy]
                 
-                if not df_mio_hoy.empty:
-                    mi_rh = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
-                    mi_rh["TOTAL"] = mi_rh.sum(axis=1)
-                    # Forzamos alineación izquierda total
-                    st.table(mi_rh) 
+               if not df_mio_hoy.empty:
+                   mi_rh = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
+                   mi_rh["TOTAL"] = mi_rh.sum(axis=1)
+
+                    # --- ESTA ES LA PARTE CLAVE ---
+                    # 1. Ponemos el nombre a la cabecera del índice
+                    mi_rh.index.name = "VENDEDORES"
+
+                    # 2. Usamos st.dataframe para ocultar los números 0, 1, 2...
+                    st.dataframe(
+                        mi_rh, 
+                        use_container_width=True,
+                        column_config={
+                            # Esto hace que la columna de nombres se llame VENDEDORES y no salgan números
+                            "_index": st.column_config.Column("VENDEDORES", width="medium")
+                        }
+                    ) 
                 else:
                     st.caption(f"Sin actividad hoy {hoy}")
 
@@ -354,6 +367,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
