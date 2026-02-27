@@ -250,28 +250,33 @@ with tab2:
             st.divider()
             st.markdown("##### **2. Ranking Metas (Meta ≥ 40)**")
             
-            # Copiamos el dataframe para no alterar el original
             df_ranking = df_f.copy()
-            
-            # Convertimos la fecha a formato DD/MM (ejemplo: 27/02)
+            # Convertimos a fecha corta (Día/Mes)
             df_ranking["FECHA_CORTE"] = pd.to_datetime(df_ranking["FECHA"], dayfirst=True).dt.strftime('%d/%m')
             
-            # Creamos la tabla usando la nueva columna de fecha corta
+            # Crear pivote
             rd = df_ranking.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA_CORTE", values="DETALLE", aggfunc="count", fill_value=0)
-            
-            # Reordenamos las fechas (de la más reciente a la más antigua)
             rd = rd.reindex(sorted(rd.columns, reverse=True), axis=1)
             rd["TOTAL ACUM"] = rd.sum(axis=1)
             
-            # --- LIMPIEZA DE ÍNDICES Y ETIQUETA VENDEDORES ---
+            # 1. Reset index para que VENDEDORES sea columna
             rd_mostrar = rd.sort_values(by="TOTAL ACUM", ascending=False).reset_index()
             rd_mostrar.columns.values[0] = "VENDEDORES" 
 
-            # Mostramos la tabla
-            st.table(rd_mostrar.style.applymap(
+            # 2. Mostramos ocultando el índice de números
+            # Usamos .style.hide() para versiones nuevas o .style.hide_index() para antiguas
+            try:
+                styler = rd_mostrar.style.hide(axis='index') # Versión moderna de Pandas
+            except:
+                styler = rd_mostrar.style.hide_index() # Versión anterior
+
+            # Aplicamos los colores y mostramos
+            styler.applymap(
                 lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', 
-                subset=rd_mostrar.columns[1:-1] # El color verde solo para las columnas de fechas
-            ).set_properties(**{'text-align': 'left', 'font-size': '12px'}))
+                subset=rd_mostrar.columns[1:-1]
+            ).set_properties(**{'text-align': 'left', 'font-size': '12px'})
+
+            st.table(styler)
 
             # --- BOTÓN DE DESCARGA (UBICADO AQUÍ SEGÚN TU PEDIDO) ---
             buf = io.BytesIO()
@@ -320,6 +325,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
