@@ -246,30 +246,32 @@ with tab2:
             else:
                 st.info("No hay datos para esta fecha.")
 
-# 2. RANKING METAS (ESTILO SEGMENTO 3)
+# 2. RANKING METAS
             st.divider()
             st.markdown("##### **2. Ranking Metas (Meta ≥ 40)**")
             
+            # 1. Preparar datos con fecha corta
             df_ranking = df_f.copy()
-            # Fecha corta DD/MM
             df_ranking["FECHA_CORTE"] = pd.to_datetime(df_ranking["FECHA"], dayfirst=True).dt.strftime('%d/%m')
             
             rd = df_ranking.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA_CORTE", values="DETALLE", aggfunc="count", fill_value=0)
             rd = rd.reindex(sorted(rd.columns, reverse=True), axis=1)
             rd["TOTAL ACUM"] = rd.sum(axis=1)
-            
-            # Ordenamos por el total
             rd = rd.sort_values(by="TOTAL ACUM", ascending=False)
 
-            # --- EL TRUCO PARA BORRAR LOS NÚMEROS Y MOSTRAR "VENDEDORES" ---
-            # 1. Ponemos el nombre a la esquina (VENDEDORES)
+            # --- ESTRUCTURA CLAVE (IGUAL A LA MATRIZ) ---
             rd.index.name = "VENDEDORES"
-            
-            # 2. Mostramos usando st.table con el estilo del segmento 3
-            st.table(rd.style.applymap(
-                lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', 
-                subset=rd.columns[:-1]
-            ).set_properties(**{'text-align': 'left', 'font-size': '12px'}))
+
+            st.dataframe(
+                rd.style.applymap(
+                    lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', 
+                    subset=rd.columns[:-1]
+                ).set_properties(**{'text-align': 'left'}),
+                use_container_width=True,
+                column_config={
+                    "_index": st.column_config.Column("VENDEDORES", width="medium")
+                }
+            )
 
             # --- BOTÓN DE DESCARGA (UBICADO AQUÍ SEGÚN TU PEDIDO) ---
             buf = io.BytesIO()
@@ -318,6 +320,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
