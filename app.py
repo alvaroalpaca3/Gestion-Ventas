@@ -334,55 +334,6 @@ with tab2:
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
 
-# Suponiendo que ya tienes tus pestañas definidas arriba:
-# tab1, tab2, tab3 = st.tabs(["Monitor", "Ranking", "Mantenimiento"])
 
-with tab3:
-    st.markdown("### 🛠️ Mantenimiento de Estructura")
-    st.info("Desde aquí puedes dar de alta a nuevos vendedores para que aparezcan en los reportes.")
 
-    # Formulario de registro
-    with st.form("registro_vendedor", clear_on_submit=True):
-        st.markdown("##### **Datos del Nuevo Personal**")
-        
-        # Campos solicitados
-        dni = st.text_input("DNI (8 dígitos)", max_chars=8)
-        nombre = st.text_input("NOMBRE COMPLETO")
-        supervisor = st.text_input("SUPERVISOR ASIGNADO")
-        zonal = st.selectbox("ZONAL", ["LIMA", "NORTE", "SUR", "CENTRO", "ORIENTE"])
-
-        # Botón de guardado
-        btn_registrar = st.form_submit_button("📥 AGREGAR A DRIVE")
-
-        if btn_registrar:
-            # Validaciones básicas
-            if not dni or len(dni) < 8:
-                st.error("El DNI debe tener 8 dígitos.")
-            elif not nombre or not supervisor:
-                st.error("Por favor, completa el nombre y el supervisor.")
-            else:
-                # --- AQUÍ VA LA CONEXIÓN AL DRIVE ---
-                # 1. Creamos el diccionario con los datos
-                nuevo_dato = {
-                    "DNI": [dni],
-                    "NOMBRE VENDEDOR": [nombre.upper().strip()],
-                    "SUPERVISOR": [supervisor.upper().strip()],
-                    "ZONAL": [zonal]
-                }
-                nuevo_df = pd.DataFrame(nuevo_dato)
-
-                try:
-                    # Aquí llamarías a tu función existente para guardar:
-                    # guardar_en_drive(nuevo_df) 
-                    
-                    st.success(f"✅ {nombre.upper()} ha sido añadido a la estructura con éxito.")
-                    st.balloons()
-                except Exception as e:
-                    st.error(f"Error al conectar con Drive: {e}")
-
-    # --- TABLA DE CONSULTA RÁPIDA ---
-    st.divider()
-    st.markdown("##### **Vendedores Registrados Recientemente**")
-    # Aquí puedes mostrar un st.dataframe con la lista actual 
-    # usando la misma configuración sin números que ya arreglamos
 
