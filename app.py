@@ -146,12 +146,12 @@ with tab1:
                 elif len(c_fe) != 13:
                     st.error("❌ Error: El código FE debe tener exactamente 13 caracteres.")
                     error = True
-            elif detalle == "REFERIDO" and (not n_ref.strip() or len(c_ref) != 9):
-                st.error("❌ Error: Nombre y Celular del Referido (9 dígitos) son obligatorios.")
-                error = True
-            elif detalle == "NO-VENTA" and m_nv == "SELECCIONA":
-                st.error("❌ Error: Seleccione el motivo de No-Venta.")
-                error = True
+                elif detalle == "REFERIDO" and (not n_ref.strip() or len(c_ref) != 9 or not c_ref.isdigit()):
+                    st.error("❌ Error: El Celular del Referido debe tener exactamente 9 DÍGITOS NUMÉRICOS.")
+                    error = True
+                elif detalle == "NO-VENTA" and m_nv == "SELECCIONA":
+                    st.error("❌ Error: Seleccione el motivo de No-Venta.")
+                    error = True
 
             if not error:
                 try:
@@ -384,6 +384,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
