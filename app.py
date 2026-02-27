@@ -244,20 +244,24 @@ with tab2:
                 rh["TOTAL"] = rh.sum(axis=1)
                 rh = rh.sort_values(by="TOTAL", ascending=False)
 
-                # --- CONFIGURACIÓN PARA ALINEAR A LA DERECHA ---
-                rh.index.name = "VENDEDORES"
+                # --- ELIMINAR NÚMEROS Y ALINEAR ---
+                # 1. Reset index para que VENDEDORES sea columna
+                rh_mostrar = rh.reset_index()
+                rh_mostrar.columns.values[0] = "VENDEDORES"
 
-                st.dataframe(
-                    rh, # Pasamos el dataframe directo para que column_config tenga control total
-                    use_container_width=True,
-                    column_config={
-                        # La primera columna (índice) a la izquierda
-                        "_index": st.column_config.Column("VENDEDORES", width="medium"),
-                        # Usamos un formato genérico para que todas las columnas de números 
-                        # se alineen a la derecha automáticamente (comportamiento por defecto de NumberColumn)
-                        **{col: st.column_config.NumberColumn(col, format="%d") for col in rh.columns}
-                    }
-                )
+                # 2. Aplicamos el estilo CSS para forzar la alineación
+                # nth-child(1) es Vendedores (izquierda)
+                # nth-child(n+2) son todas las demás (derecha)
+                st.markdown("""
+                    <style>
+                        table td:nth-child(1), table th:nth-child(1) { text-align: left !important; }
+                        table td:nth-child(n+2), table th:nth-child(n+2) { text-align: right !important; }
+                    </style>
+                """, unsafe_allow_html=True)
+
+                # 3. Mostramos con st.table ocultando el índice de números
+                st.table(rh_mostrar.style.hide(axis='index'))
+                
             else:
                 st.info("No hay datos para esta fecha.")
 
@@ -335,6 +339,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
