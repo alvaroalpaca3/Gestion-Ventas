@@ -334,30 +334,56 @@ with tab2:
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
 
+import streamlit as st
+import pandas as pd
+# Asumiendo que usas gspread para Google Sheets o similar para Excel en Drive
 
+def pestaña_mantenimiento():
+    st.markdown("### 🛠️ Registro de Nuevos Vendedores")
+    st.info("Complete los datos para añadir un nuevo vendedor a la base maestra de Google Drive.")
 
+    # Creamos el formulario
+    with st.form("form_registro", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            dni = st.text_input("DNI (8 dígitos)", max_chars=8)
+            nombre = st.text_input("NOMBRE VENDEDOR")
+        
+        with col2:
+            supervisor = st.text_input("SUPERVISOR")
+            zonal = st.selectbox("ZONAL", ["LIMA", "NORTE", "SUR", "CENTRO", "ORIENTE"]) # Ajusta según tus zonales
 
+        submit = st.form_submit_button("✅ Guardar en Estructura")
 
+        if submit:
+            if dni and nombre and supervisor and zonal:
+                # 1. Lógica para conectar con Drive y leer la data actual
+                # df_actual = leer_estructura_drive() 
+                
+                # 2. Verificar si el DNI ya existe
+                # if dni in df_actual['DNI'].values:
+                #    st.warning(f"El DNI {dni} ya está registrado.")
+                # else:
+                
+                # 3. Crear nueva fila
+                nueva_fila = {
+                    "DNI": dni,
+                    "NOMBRE VENDEDOR": nombre.upper(),
+                    "SUPERVISOR": supervisor.upper(),
+                    "ZONAL": zonal
+                }
+                
+                # 4. ENVIAR A DRIVE (Aquí va tu función de carga)
+                # subir_a_drive(nueva_fila)
+                
+                st.success(f"¡Éxito! {nombre.upper()} ha sido incorporado a la estructura.")
+                st.balloons()
+            else:
+                st.error("Todos los campos son obligatorios para el registro.")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # --- VISTA PREVIA DE LA ESTRUCTURA ACTUAL ---
+    st.divider()
+    st.markdown("##### **Vendedores actuales en el sistema**")
+    # Aquí podrías mostrar la tabla actual (usando el formato que ya nos gustó)
+    # st.dataframe(df_actual, use_container_width=True)
