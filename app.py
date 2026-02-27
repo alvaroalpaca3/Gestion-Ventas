@@ -244,27 +244,17 @@ with tab2:
                 rh["TOTAL"] = rh.sum(axis=1)
                 rh = rh.sort_values(by="TOTAL", ascending=False)
 
-                # --- CONFIGURACIÓN GANADORA ---
+                # --- CONFIGURACIÓN SIMPLE Y SEGURA ---
                 rh.index.name = "VENDEDORES"
-
-                # Creamos la configuración de columnas
-                # Streamlit alinea a la derecha automáticamente TODO lo que sea número
-                config_cols = {
-                    "_index": st.column_config.Column("VENDEDORES", width="medium"),
-                }
-
-                # Forzamos a que las horas sean tratadas como números para que el título se mueva a la derecha
-                for col in rh.columns:
-                    config_cols[col] = st.column_config.NumberColumn(
-                        str(col), # El título de la columna
-                        format="%d", # Formato de número entero
-                        alignment="right" # <--- ESTO ES LO QUE BUSCÁBAMOS
-                    )
 
                 st.dataframe(
                     rh, 
                     use_container_width=True,
-                    column_config=config_cols
+                    column_config={
+                        # Esto quita los números 0,1,2 y pone "VENDEDORES" a la izquierda
+                        "_index": st.column_config.Column("VENDEDORES", width="medium"),
+                        # Para el resto, Streamlit pondrá los números y títulos a la derecha por defecto
+                    }
                 )
             else:
                 st.info("No hay datos para esta fecha.")
@@ -343,6 +333,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
