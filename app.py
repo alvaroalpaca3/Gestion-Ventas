@@ -176,7 +176,7 @@ with tab_personal:
                     mi_rh = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
                     mi_rh["TOTAL"] = mi_rh.sum(axis=1)
 
-                    # Reset index para forzar título VENDEDOR y ocultar 0,1,2
+                    # Reset index para forzar título VENDEDOR
                     mi_rh_final = mi_rh.reset_index()
                     mi_rh_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDOR"}, inplace=True)
 
@@ -192,7 +192,6 @@ with tab_personal:
                 # 2. MATRIZ Y DONA (HOY)
                 st.markdown("##### **2. Matriz de Productividad (Hoy)**")
                 if not df_mio_hoy.empty:
-                    # CUADRO MATRIZ
                     mi_tp = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
                     mi_tp["TOTAL"] = mi_tp.sum(axis=1)
                     
@@ -207,7 +206,6 @@ with tab_personal:
                         column_config={"VENDEDOR": st.column_config.Column(width="medium")}
                     )
 
-                    # GRÁFICO DONA
                     fig_m = px.pie(df_mio_hoy, names='DETALLE', hole=0.5)
                     fig_m.update_layout(
                         margin=dict(t=20, b=0, l=0, r=0),
@@ -223,7 +221,6 @@ with tab_personal:
                 st.markdown("##### **3. Avance del Mes**")
                 if not df_mio.empty:
                     mi_rd = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
-                    # Ordenar fechas de más reciente a más antigua
                     mi_rd = mi_rd.reindex(sorted(mi_rd.columns, reverse=True), axis=1)
                     mi_rd["TOTAL"] = mi_rd.sum(axis=1)
                     
@@ -231,6 +228,7 @@ with tab_personal:
                     mi_rd_final = mi_rd.reset_index()
                     mi_rd_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDOR"}, inplace=True)
                     
+                    # Quitamos 'pinned=True' para evitar el TypeError
                     st.dataframe(
                         mi_rd_final.style.applymap(
                             lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', 
@@ -239,13 +237,13 @@ with tab_personal:
                         use_container_width=True,
                         hide_index=True,
                         column_config={
-                            "VENDEDOR": st.column_config.Column(width="medium", pinned=True),
+                            "VENDEDOR": st.column_config.Column(width="medium"),
                             "TOTAL": st.column_config.Column(width="small")
                         }
                     )
         else:
             st.error("Error al cargar registros.")
-
+            
 # --- PESTAÑA 3: DASHBOARD (ADMIN - ALINEACIÓN IZQUIERDA & TABLAS PURAS) ---
 with tab2:
     st.markdown("##### 🔐 Acceso Administrador")
@@ -370,6 +368,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
