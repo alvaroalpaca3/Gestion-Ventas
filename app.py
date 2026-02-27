@@ -271,16 +271,34 @@ with tab2:
                 use_container_width=True
             )
 
-            # 3. MATRIZ PRODUCTIVIDAD
+# 3. MATRIZ PRODUCTIVIDAD
             st.divider()
             st.markdown(f"##### **3. Matriz de Productividad ({z_sel})**")
+            
+            # Crear la tabla base
             tp = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
+            
+            # 1. Calcular Total Horizontal (por vendedor)
             tp["TOTAL"] = tp.sum(axis=1)
-            # st.table para mantener la estética uniforme
-            st.table(tp.sort_values(by="TOTAL", ascending=False))
+            
+            # Ordenar por el total antes de añadir la fila de suma global
+            tp = tp.sort_values(by="TOTAL", ascending=False)
+            
+            # 2. Calcular Total Vertical (Suma de cada columna)
+            df_totales_v = pd.DataFrame(tp.sum()).T
+            df_totales_v.index = ["TOTAL GENERAL"]
+            
+            # 3. Unir la tabla ordenada con la fila de totales
+            tp_final = pd.concat([tp, df_totales_v])
+            
+            # st.table para mantener la estética uniforme a la izquierda
+            # He añadido un estilo para resaltar la fila de TOTAL GENERAL en amarillo claro
+            st.table(tp_final.style.set_properties(**{'text-align': 'left', 'font-size': '12px'})
+                     .set_properties(subset=(['TOTAL GENERAL'], slice(None)), **{'background-color': '#FFEB9C', 'font-weight': 'bold'}))
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
