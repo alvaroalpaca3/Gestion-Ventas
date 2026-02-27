@@ -181,8 +181,8 @@ with tab_personal:
                     st.caption(f"Sin actividad hoy {hoy}")
 
 
-              # 3. MATRIZ Y DONA (SOLO DÍA PRESENTE)
-                st.markdown("##### **3. Matriz de Productividad (Hoy)**")
+              # 2. MATRIZ Y DONA (SOLO DÍA PRESENTE)
+                st.markdown("##### **2. Matriz de Productividad (Hoy)**")
                 
                 # --- FILTRO CLAVE: Solo registros de hoy ---
                 fecha_hoy = pd.to_datetime("today").strftime('%d/%m/%Y') 
@@ -217,8 +217,8 @@ with tab_personal:
                 else:
                     st.info("Aún no tienes registros guardados hoy.")
 
-                # 2. AVANCE DEL MES (RANKING)
-                st.markdown("##### **2. Avance del Mes**")
+                # 3. AVANCE DEL MES (RANKING)
+                st.markdown("##### **3. Avance del Mes**")
                 mi_rd = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
                 mi_rd = mi_rd.reindex(sorted(mi_rd.columns, reverse=True), axis=1)
                 mi_rd["TOTAL"] = mi_rd.sum(axis=1)
@@ -354,6 +354,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
