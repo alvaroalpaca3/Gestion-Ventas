@@ -246,18 +246,32 @@ with tab2:
             else:
                 st.info("No hay datos para esta fecha.")
 
-            # 2. RANKING METAS
+# 2. RANKING METAS
             st.divider()
             st.markdown("##### **2. Ranking Metas (Meta ≥ 40)**")
-            rd = df_f.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
+            
+            # Copiamos el dataframe para no alterar el original
+            df_ranking = df_f.copy()
+            
+            # Convertimos la fecha a formato DD/MM (ejemplo: 27/02)
+            df_ranking["FECHA_CORTE"] = pd.to_datetime(df_ranking["FECHA"], dayfirst=True).dt.strftime('%d/%m')
+            
+            # Creamos la tabla usando la nueva columna de fecha corta
+            rd = df_ranking.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA_CORTE", values="DETALLE", aggfunc="count", fill_value=0)
+            
+            # Reordenamos las fechas (de la más reciente a la más antigua)
             rd = rd.reindex(sorted(rd.columns, reverse=True), axis=1)
             rd["TOTAL ACUM"] = rd.sum(axis=1)
             
-            # Aplicamos color y mostramos como tabla
-            st.table(rd.sort_values(by="TOTAL ACUM", ascending=False).style.applymap(
+            # --- LIMPIEZA DE ÍNDICES Y ETIQUETA VENDEDORES ---
+            rd_mostrar = rd.sort_values(by="TOTAL ACUM", ascending=False).reset_index()
+            rd_mostrar.columns.values[0] = "VENDEDORES" 
+
+            # Mostramos la tabla
+            st.table(rd_mostrar.style.applymap(
                 lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', 
-                subset=rd.columns[:-1]
-            ))
+                subset=rd_mostrar.columns[1:-1] # El color verde solo para las columnas de fechas
+            ).set_properties(**{'text-align': 'left', 'font-size': '12px'}))
 
             # --- BOTÓN DE DESCARGA (UBICADO AQUÍ SEGÚN TU PEDIDO) ---
             buf = io.BytesIO()
@@ -306,6 +320,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
