@@ -251,32 +251,24 @@ with tab2:
             st.markdown("##### **2. Ranking Metas (Meta ≥ 40)**")
             
             df_ranking = df_f.copy()
-            # Convertimos a fecha corta (Día/Mes)
+            # Fecha corta
             df_ranking["FECHA_CORTE"] = pd.to_datetime(df_ranking["FECHA"], dayfirst=True).dt.strftime('%d/%m')
             
-            # Crear pivote
             rd = df_ranking.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA_CORTE", values="DETALLE", aggfunc="count", fill_value=0)
             rd = rd.reindex(sorted(rd.columns, reverse=True), axis=1)
             rd["TOTAL ACUM"] = rd.sum(axis=1)
             
-            # 1. Reset index para que VENDEDORES sea columna
+            # Reset index y renombramos
             rd_mostrar = rd.sort_values(by="TOTAL ACUM", ascending=False).reset_index()
             rd_mostrar.columns.values[0] = "VENDEDORES" 
 
-            # 2. Mostramos ocultando el índice de números
-            # Usamos .style.hide() para versiones nuevas o .style.hide_index() para antiguas
-            try:
-                styler = rd_mostrar.style.hide(axis='index') # Versión moderna de Pandas
-            except:
-                styler = rd_mostrar.style.hide_index() # Versión anterior
-
-            # Aplicamos los colores y mostramos
-            styler.applymap(
+            # --- LA SOLUCIÓN DEFINITIVA ---
+            # En lugar de st.table(df), usamos st.write con formato de tabla
+            # Esto fuerza a Streamlit a no poner índices numéricos
+            st.write(rd_mostrar.style.applymap(
                 lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', 
                 subset=rd_mostrar.columns[1:-1]
-            ).set_properties(**{'text-align': 'left', 'font-size': '12px'})
-
-            st.table(styler)
+            ).set_properties(**{'text-align': 'left', 'font-size': '12px'}).hide(axis='index'))
 
             # --- BOTÓN DE DESCARGA (UBICADO AQUÍ SEGÚN TU PEDIDO) ---
             buf = io.BytesIO()
@@ -325,6 +317,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
