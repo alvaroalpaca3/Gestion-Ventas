@@ -175,23 +175,23 @@ with tab_personal:
                df_mio_hoy = df_mio[df_mio["FECHA"] == hoy]
                 
                if not df_mio_hoy.empty:
-               mi_rh = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
-               mi_rh["TOTAL"] = mi_rh.sum(axis=1)
+                mi_rh = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
+                mi_rh["TOTAL"] = mi_rh.sum(axis=1)
 
-                # --- MÉTODO DEFINITIVO: RESET_INDEX ---
-                # Pasamos el nombre del vendedor de 'índice' a 'columna real'
-                mi_rh_final = mi_rh.reset_index()
-                # Renombramos esa columna específicamente
-                mi_rh_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDORES"}, inplace=True)
+                 # --- MÉTODO DEFINITIVO: RESET_INDEX ---
+                 # Pasamos el nombre del vendedor de 'índice' a 'columna real'
+                 mi_rh_final = mi_rh.reset_index()
+                 # Renombramos esa columna específicamente
+                 mi_rh_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDORES"}, inplace=True)
 
-                st.dataframe(
-                       mi_rh_final, 
-                       use_container_width=True,
-                       hide_index=True, # <--- ESTO BORRA DEFINITIVAMENTE LOS NÚMEROS 0,1,2
-                       column_config={
-                        "VENDEDORES": st.column_config.Column(width="medium")
-                        }
-                    ) 
+                 st.dataframe(
+                        mi_rh_final, 
+                        use_container_width=True,
+                        hide_index=True, # <--- ESTO BORRA DEFINITIVAMENTE LOS NÚMEROS 0,1,2
+                        column_config={
+                         "VENDEDORES": st.column_config.Column(width="medium")
+                         }
+                     ) 
                 else:
                 st.caption(f"Sin actividad hoy {hoy}")
                     
@@ -368,6 +368,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
