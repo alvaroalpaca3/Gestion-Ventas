@@ -234,7 +234,7 @@ with tab2:
             
             df_f = df_t[df_t["SUPERVISOR"] == s_sel] if s_sel != "TODOS" else df_t.copy()
 
-# 1. MONITOR HORARIO (ALINEACIÓN MANUAL TOTAL)
+# 1. MONITOR HORARIO
             st.divider()
             st.markdown("##### **1. Monitor Horario (Día Seleccionado)**")
             df_h = df_f[df_f["FECHA"] == dia_sel]
@@ -242,30 +242,30 @@ with tab2:
             if not df_h.empty:
                 rh = df_h.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
                 rh["TOTAL"] = rh.sum(axis=1)
-                rh = rh.sort_values(by="TOTAL", ascending=False).reset_index()
-                rh.rename(columns={"NOMBRE VENDEDOR": "VENDEDORES"}, inplace=True)
+                rh = rh.sort_values(by="TOTAL", ascending=False)
 
-                # --- CONSTRUCCIÓN DE TABLA HTML CUSTOM ---
-                # Definimos el estilo para que sea idéntico a Streamlit pero con nuestras reglas
-                estilo_css = """
-                <style>
-                    .tabla-custom { width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 14px; }
-                    .tabla-custom th, .tabla-custom td { padding: 12px 8px; border-bottom: 1px solid #e6e9ef; }
-                    /* Primera columna (Vendedores) siempre a la izquierda */
-                    .tabla-custom th:first-child, .tabla-custom td:first-child { text-align: left !important; font-weight: 500; }
-                    /* Todas las demás columnas (encabezados y datos) a la derecha */
-                    .tabla-custom th:not(:first-child), .tabla-custom td:not(:first-child) { text-align: right !important; }
-                    .tabla-custom th { background-color: #f0f2f6; color: #31333F; }
-                    .tabla-custom tr:hover { background-color: #f8f9fb; }
-                </style>
-                """
-                
-                # Convertimos el dataframe a HTML sin el índice (0,1,2...)
-                html_tabla = rh.to_html(index=False, classes='tabla-custom', border=0)
-                
-                # Mostramos la tabla inyectando el CSS
-                st.markdown(estilo_css + html_tabla, unsafe_allow_html=True)
-                
+                # --- CONFIGURACIÓN GANADORA ---
+                rh.index.name = "VENDEDORES"
+
+                # Creamos la configuración de columnas
+                # Streamlit alinea a la derecha automáticamente TODO lo que sea número
+                config_cols = {
+                    "_index": st.column_config.Column("VENDEDORES", width="medium"),
+                }
+
+                # Forzamos a que las horas sean tratadas como números para que el título se mueva a la derecha
+                for col in rh.columns:
+                    config_cols[col] = st.column_config.NumberColumn(
+                        str(col), # El título de la columna
+                        format="%d", # Formato de número entero
+                        alignment="right" # <--- ESTO ES LO QUE BUSCÁBAMOS
+                    )
+
+                st.dataframe(
+                    rh, 
+                    use_container_width=True,
+                    column_config=config_cols
+                )
             else:
                 st.info("No hay datos para esta fecha.")
                 
@@ -343,6 +343,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
