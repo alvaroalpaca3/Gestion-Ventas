@@ -289,18 +289,32 @@ with tab2:
             # 3. Unir tablas
             tp_final = pd.concat([tp, df_totales_v])
 
-            # --- SOLUCIÓN PARA LA ETIQUETA "VENDEDORES" SIN ERRORES ---
-            # Convertimos el índice en la primera columna para que tenga encabezado
+            # --- LIMPIEZA TOTAL DE ÍNDICES (PARA ELIMINAR 0, 1, 2, 3) ---
             tp_mostrar = tp_final.reset_index()
-            tp_mostrar.columns.values[0] = "VENDEDORES" # Renombramos la primera columna
+            tp_mostrar.columns.values[0] = "VENDEDORES"
 
-            # Mostramos la tabla
-            # Usamos hide() o simplemente no mostramos el índice de números
-            st.table(tp_mostrar.style.set_properties(**{'text-align': 'left', 'font-size': '12px'})
-                     .apply(lambda x: ['background-color: #FFEB9C; font-weight: bold' if x['VENDEDORES'] == 'TOTAL GENERAL' else '' for _ in x], axis=1))
+            # Convertimos a HTML para forzar la eliminación de la columna de números
+            # index=False es el truco mágico aquí
+            html_tabla = tp_mostrar.to_html(index=False, classes='table table-striped')
+            
+            # Aplicamos un poco de estilo CSS para que se vea igual que st.table pero sin números
+            st.markdown(
+                f"""
+                <style>
+                    .renderjson {{ text-align: left; }}
+                    table {{ width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 14px; }}
+                    th {{ background-color: #f0f2f6; text-align: left; padding: 8px; border: 1px solid #dee2e6; }}
+                    td {{ text-align: left; padding: 8px; border: 1px solid #dee2e6; }}
+                    tr:last-child {{ background-color: #FFEB9C; font-weight: bold; }}
+                </style>
+                {html_tabla}
+                """, 
+                unsafe_allow_html=True
+            )
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
