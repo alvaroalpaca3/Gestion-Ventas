@@ -291,13 +291,16 @@ with tab2:
             # 3. Unir la tabla ordenada con la fila de totales
             tp_final = pd.concat([tp, df_totales_v])
 
+            # ASIGNAR NOMBRE A LA COLUMNA DE ÍNDICE (La esquina que marcaste con la X)
+            tp_final.index.name = "VENDEDORES"
+
             # st.table para mantener la estética uniforme a la izquierda
-            # He añadido un estilo para resaltar la fila de TOTAL GENERAL en amarillo claro
             st.table(tp_final.style.set_properties(**{'text-align': 'left', 'font-size': '12px'})
                      .set_properties(subset=(['TOTAL GENERAL'], slice(None)), **{'background-color': '#FFEB9C', 'font-weight': 'bold'}))
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
