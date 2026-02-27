@@ -234,7 +234,7 @@ with tab2:
             
             df_f = df_t[df_t["SUPERVISOR"] == s_sel] if s_sel != "TODOS" else df_t.copy()
 
-# 1. MONITOR HORARIO
+# 1. MONITOR HORARIO (ALINEACIÓN MANUAL TOTAL)
             st.divider()
             st.markdown("##### **1. Monitor Horario (Día Seleccionado)**")
             df_h = df_f[df_f["FECHA"] == dia_sel]
@@ -242,36 +242,33 @@ with tab2:
             if not df_h.empty:
                 rh = df_h.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
                 rh["TOTAL"] = rh.sum(axis=1)
-                rh = rh.sort_values(by="TOTAL", ascending=False)
+                rh = rh.sort_values(by="TOTAL", ascending=False).reset_index()
+                rh.rename(columns={"NOMBRE VENDEDOR": "VENDEDORES"}, inplace=True)
 
-                # --- CONFIGURACIÓN MAESTRA ---
-                rh.index.name = "VENDEDORES"
-
-                # Creamos la configuración de columnas dinámicamente
-                config_columnas = {
-                    # 1. El índice (Vendedores) a la izquierda y con nombre
-                    "_index": st.column_config.Column("VENDEDORES", width="medium", help="Nombre del vendedor"),
-                }
-
-                # 2. Todas las demás columnas (horas y total) a la derecha
-                for col in rh.columns:
-                    config_columnas[col] = st.column_config.Column(
-                        label=str(col),
-                        width="small",
-                        # Esta es la clave: alinear a la derecha
-                        required=True
-                    )
-
-                # Mostramos con st.dataframe (que permite ocultar el 0,1,2 con _index)
-                st.dataframe(
-                    rh, 
-                    use_container_width=True,
-                    column_config=config_columnas
-                )
+                # --- CONSTRUCCIÓN DE TABLA HTML CUSTOM ---
+                # Definimos el estilo para que sea idéntico a Streamlit pero con nuestras reglas
+                estilo_css = """
+                <style>
+                    .tabla-custom { width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 14px; }
+                    .tabla-custom th, .tabla-custom td { padding: 12px 8px; border-bottom: 1px solid #e6e9ef; }
+                    /* Primera columna (Vendedores) siempre a la izquierda */
+                    .tabla-custom th:first-child, .tabla-custom td:first-child { text-align: left !important; font-weight: 500; }
+                    /* Todas las demás columnas (encabezados y datos) a la derecha */
+                    .tabla-custom th:not(:first-child), .tabla-custom td:not(:first-child) { text-align: right !important; }
+                    .tabla-custom th { background-color: #f0f2f6; color: #31333F; }
+                    .tabla-custom tr:hover { background-color: #f8f9fb; }
+                </style>
+                """
+                
+                # Convertimos el dataframe a HTML sin el índice (0,1,2...)
+                html_tabla = rh.to_html(index=False, classes='tabla-custom', border=0)
+                
+                # Mostramos la tabla inyectando el CSS
+                st.markdown(estilo_css + html_tabla, unsafe_allow_html=True)
                 
             else:
                 st.info("No hay datos para esta fecha.")
-
+                
 # 2. RANKING METAS
             st.divider()
             st.markdown("##### **2. Ranking Metas (Meta ≥ 40)**")
@@ -346,6 +343,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
