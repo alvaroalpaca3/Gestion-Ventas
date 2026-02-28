@@ -163,7 +163,7 @@ with tab1:
                 elif detalle == "REFERIDO" and (not n_ref.strip() or len(c_ref) != 9 or not c_ref.isdigit()):
                     st.error("❌ Error: El Celular del Referido debe tener exactamente 9 DÍGITOS NUMÉRICOS.")
                     error = True
-                elif detalle == "NO-VENTA" and m_nv == "SELECCIONA":
+                elif detalle == "NO-VENTA" and m_nv is None:
                     st.error("❌ Error: Seleccione el motivo de No-Venta.")
                     error = True
 
@@ -394,6 +394,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
