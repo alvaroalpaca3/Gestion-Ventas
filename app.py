@@ -169,7 +169,7 @@ with tab1:
                     st.rerun()
                 except Exception as e: st.error(f"Error: {e}")
 
-# --- PESTAÑA 2: MI PROGRESO (DISEÑO ANTI-DESFASE) ---
+# --- PESTAÑA 2: MI PROGRESO (FILTRO POR NOMBRE) ---
 with tab_personal:
     if nom_v == "N/A":
         st.warning("👈 Ingrese su DNI en la barra lateral.")
@@ -177,24 +177,18 @@ with tab_personal:
         st.markdown(f"##### 📈 Mi Actividad: {nom_v}")
         
         if not df_registros.empty:
-            # --- BLOQUE DE LIMPIEZA PARA CRUCE DE TEXTO EXACTO ---
-            col_target = "DOCUMENTO VENDEDOR"
+            # --- CAMBIO CLAVE: Filtramos por la columna NOMBRE VENDEDOR ---
+            # Limpiamos la columna de la base de datos por si tiene espacios extra
+            col_nombre = "NOMBRE VENDEDOR"
+            df_registros[col_nombre] = df_registros[col_nombre].astype(str).str.strip()
             
-            # Convertimos a texto, eliminamos comillas, espacios y el molesto ".0" de Excel
-            df_registros[col_target] = (
-                df_registros[col_target]
-                .astype(str)
-                .str.replace("'", "", regex=False)
-                .str.replace(r'\.0$', '', regex=True)
-                .str.strip()
-            )
-            
-            # Filtramos comparando el texto exacto (dni_clean ya viene con ceros de la lateral)
-            df_mio = df_registros[df_registros[col_target] == dni_clean].copy()
-            # ----------------------------------------------------
+            # Filtramos usando la variable 'nom_v' que ya rescatamos del maestro
+            df_mio = df_registros[df_registros[col_nombre] == nom_v].copy()
+            # -------------------------------------------------------------
             
             if df_mio.empty:
-                st.info(f"Sin registros para el documento: {dni_clean}")
+                # Si sale vacío, mostramos el nombre para verificar
+                st.info(f"Aún no existen registros guardados para: {nom_v}")
             else:
                 tz = pytz.timezone('America/Lima')
                 hoy = datetime.now(tz).strftime("%d/%m/%Y")
@@ -204,10 +198,9 @@ with tab_personal:
                 df_mio_hoy = df_mio[df_mio["FECHA"] == hoy]
                 
                 if not df_mio_hoy.empty:
+                    # Usamos reset_index para que la cabecera diga VENDEDOR y no haya números 0,1,2
                     mi_rh = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
                     mi_rh["TOTAL"] = mi_rh.sum(axis=1)
-
-                    # Reset index para forzar título VENDEDOR
                     mi_rh_final = mi_rh.reset_index()
                     mi_rh_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDOR"}, inplace=True)
 
@@ -225,7 +218,6 @@ with tab_personal:
                 if not df_mio_hoy.empty:
                     mi_tp = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
                     mi_tp["TOTAL"] = mi_tp.sum(axis=1)
-                    
                     mi_tp_final = mi_tp.reset_index()
                     mi_tp_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDOR"}, inplace=True)
                     
@@ -238,16 +230,14 @@ with tab_personal:
 
                     fig_m = px.pie(df_mio_hoy, names='DETALLE', hole=0.5)
                     fig_m.update_layout(
-                        margin=dict(t=20, b=0, l=0, r=0),
-                        height=250,
-                        showlegend=True,
+                        margin=dict(t=20, b=0, l=0, r=0), height=250, showlegend=True,
                         legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5)
                     )
                     st.plotly_chart(fig_m, use_container_width=True)
                 else:
-                    st.info("Aún no tienes registros guardados hoy.")
+                    st.info("No hay ventas o referidos registrados hoy.")
 
-                # 3. AVANCE DEL MES (RANKING)
+                # 3. AVANCE DEL MES
                 st.markdown("##### **3. Avance del Mes**")
                 if not df_mio.empty:
                     mi_rd = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
@@ -264,13 +254,10 @@ with tab_personal:
                         ), 
                         use_container_width=True,
                         hide_index=True,
-                        column_config={
-                            "VENDEDOR": st.column_config.Column(width="medium"),
-                            "TOTAL": st.column_config.Column(width="small")
-                        }
+                        column_config={"VENDEDOR": st.column_config.Column(width="medium")}
                     )
         else:
-            st.error("Error al cargar registros.")
+            st.error("No se pudo conectar con la base de registros.")
             
 # --- PESTAÑA 3: DASHBOARD (ADMIN - ALINEACIÓN IZQUIERDA & TABLAS PURAS) ---
 with tab2:
@@ -396,6 +383,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
