@@ -49,24 +49,27 @@ def cargar_datos():
 df_maestro, df_registros = cargar_datos()
 if "form_key" not in st.session_state: st.session_state.form_key = 0
 
+
 # --- 4. BARRA LATERAL ---
 st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
 st.sidebar.title("👤 Acceso Vendedor")
 
-# Aumentamos a 9 el max_chars
+# --- 4. BARRA LATERAL ---
 dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=9)
 
-# Limpiamos: solo números
+# Solo números
 dni_digits = "".join(filter(str.isdigit, dni_input))
 
-# Lógica de validación: mínimo 8, máximo 9
+# Validamos que sea 8 o 9
 if 8 <= len(dni_digits) <= 9:
-    # Si tiene 8, le ponemos el cero adelante. Si tiene 9, se queda como está.
+    # Si tiene 8 dígitos, le ponemos el cero para que sea texto de 8 (cruces estándar)
+    # Si tiene 9, se queda como 9.
     dni_clean = dni_digits.zfill(len(dni_digits) if len(dni_digits) == 9 else 8)
     
-    # Buscamos en el maestro (asegúrate que la columna DNI en tu Excel/Drive también sea texto)
+    # Buscamos en el maestro asegurando que sea comparación de TEXTO
     vendedor = df_maestro[df_maestro['DNI'].astype(str).str.strip() == dni_clean] if not df_maestro.empty else pd.DataFrame()
-
+    # ... resto del código de bienvenida ...
+#-----------------------------------------------------------------
     if not vendedor.empty:
         nom_v = vendedor.iloc[0]['NOMBRE VENDEDOR']
         sup_v = vendedor.iloc[0]['SUPERVISOR']
@@ -384,6 +387,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
