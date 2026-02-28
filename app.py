@@ -177,12 +177,24 @@ with tab_personal:
         st.markdown(f"##### 📈 Mi Actividad: {nom_v}")
         
         if not df_registros.empty:
+            # --- BLOQUE DE LIMPIEZA PARA CRUCE DE TEXTO EXACTO ---
             col_target = "DOCUMENTO VENDEDOR"
-            df_registros[col_target] = df_registros[col_target].astype(str).str.replace("'", "").str.strip()
+            
+            # Convertimos a texto, eliminamos comillas, espacios y el molesto ".0" de Excel
+            df_registros[col_target] = (
+                df_registros[col_target]
+                .astype(str)
+                .str.replace("'", "", regex=False)
+                .str.replace(r'\.0$', '', regex=True)
+                .str.strip()
+            )
+            
+            # Filtramos comparando el texto exacto (dni_clean ya viene con ceros de la lateral)
             df_mio = df_registros[df_registros[col_target] == dni_clean].copy()
+            # ----------------------------------------------------
             
             if df_mio.empty:
-                st.info("Sin registros.")
+                st.info(f"Sin registros para el documento: {dni_clean}")
             else:
                 tz = pytz.timezone('America/Lima')
                 hoy = datetime.now(tz).strftime("%d/%m/%Y")
@@ -214,7 +226,6 @@ with tab_personal:
                     mi_tp = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
                     mi_tp["TOTAL"] = mi_tp.sum(axis=1)
                     
-                    # Reset index para consistencia
                     mi_tp_final = mi_tp.reset_index()
                     mi_tp_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDOR"}, inplace=True)
                     
@@ -243,11 +254,9 @@ with tab_personal:
                     mi_rd = mi_rd.reindex(sorted(mi_rd.columns, reverse=True), axis=1)
                     mi_rd["TOTAL"] = mi_rd.sum(axis=1)
                     
-                    # Reset index y aplicación de estilo
                     mi_rd_final = mi_rd.reset_index()
                     mi_rd_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDOR"}, inplace=True)
                     
-                    # Quitamos 'pinned=True' para evitar el TypeError
                     st.dataframe(
                         mi_rd_final.style.applymap(
                             lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', 
@@ -387,6 +396,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
