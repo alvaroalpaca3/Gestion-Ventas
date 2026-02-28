@@ -101,7 +101,18 @@ with tab1:
         t_op = n_cl = d_cl = dir_ins = mail = c1 = prod = c_fe = n_ped = pil = m_nv = n_ref = c_ref = "N/A"
 
         if detalle == "NO-VENTA":
-            m_nv = st.selectbox("MOTIVO DE NO VENTA *", ["SELECCIONA", "COMPETENCIA", "MALA EXPERIENCIA", "CARGO ALTO", "SIN COBERTURA", "YA TIENE SERVICIO"])
+            # Definimos la lista de opciones (sin el "SELECCIONA" adentro, para que use el placeholder)
+            opciones_nv = ["COMPETENCIA", "MALA EXPERIENCIA", "CARGO ALTO", "SIN COBERTURA", "YA TIENE SERVICIO"]
+            
+            # Creamos el ÚNICO selectbox que inicia vacío
+            m_nv = st.selectbox(
+                "MOTIVO DE NO-VENTA *", 
+                options=opciones_nv, 
+                index=None,           # <--- Obliga a que empiece en blanco
+                placeholder="Haga clic para elegir un motivo...",
+                key="sec_no_venta"    # Una llave única para evitar conflictos
+            )
+            
             st.info("💡 Solo debe llenar el motivo. DNI y Zonal se guardan automáticamente.")
         
         elif detalle == "REFERIDO":
@@ -383,6 +394,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
