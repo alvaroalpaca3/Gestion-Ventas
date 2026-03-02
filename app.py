@@ -57,22 +57,19 @@ if 'zon_v' not in st.session_state:
 st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
 st.sidebar.title("👤 Acceso Vendedor")
 
-# --- 4. BARRA LATERAL (GESTIÓN DE DOCUMENTOS 8 Y 9 DÍGITOS) ---
-st.sidebar.header("IDENTIFICACIÓN")
-dni_input = st.sidebar.text_input("DOCUMENTO (DNI/CE)", max_chars=9)
+dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=9)
 
-# 1. Limpiamos: solo nos quedamos con los números
+# Solo números
 dni_digits = "".join(filter(str.isdigit, dni_input))
 
-# 2. Validamos que tenga una longitud real (8 o 9)
-if len(dni_digits) >= 8:
-    # CLAVE: Quitamos todos los ceros a la izquierda solo para la búsqueda
-    # Así "0044...", "044..." y "44..." se vuelven todos "44..."
+# Validamos que tenga una longitud coherente (DNI o CE)
+if len(dni_digits) >= 7:
+    # Quitamos ceros a la izquierda del input (ej: "0044" -> "44")
     dni_busqueda = dni_digits.lstrip('0')
     
     if not df_maestro.empty:
-        # Preparamos el Maestro: quitamos .0 (si viene de Excel) y ceros a la izquierda
-        df_maestro['DNI_COMP'] = (
+        # Limpiamos el Maestro: quitamos .0 y ceros a la izquierda
+        df_maestro['DNI_LIMPIO'] = (
             df_maestro['DNI']
             .astype(str)
             .str.replace(r'\.0$', '', regex=True)
@@ -80,22 +77,24 @@ if len(dni_digits) >= 8:
             .str.lstrip('0')
         )
         
-        # Buscamos la coincidencia exacta de los números significativos
-        vendedor_data = df_maestro[df_maestro['DNI_COMP'] == dni_busqueda]
+        # Buscamos el match
+        vendedor_data = df_maestro[df_maestro['DNI_LIMPIO'] == dni_busqueda]
         
         if not vendedor_data.empty:
             st.session_state.nom_v = vendedor_data.iloc[0]['NOMBRE VENDEDOR']
             st.session_state.zon_v = vendedor_data.iloc[0]['ZONAL']
-            
-            # Guardamos el DNI tal cual lo escribió el usuario para el registro
-            st.session_state.dni_original = dni_input 
-            
-            st.sidebar.success(f"✅ Bienvenido: {st.session_state.nom_v}")
+            # Actualizamos las variables locales para el resto del código
+            nom_v = st.session_state.nom_v
+            zon_v = st.session_state.zon_v
+            st.sidebar.success(f"✅ Bienvenido: {nom_v}")
         else:
             st.session_state.nom_v = "N/A"
-            st.sidebar.error("❌ Documento no encontrado")
+            nom_v = "N/A"
+            st.sidebar.error("❌ Vendedor no encontrado")
 else:
+    # Si borran el DNI, reseteamos el nombre
     st.session_state.nom_v = "N/A"
+    nom_v = "N/A"
 
 st.sidebar.write("")
 st.sidebar.caption("©2026 by Dubby System SA, Todos los derechos reservados")
@@ -407,6 +406,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
