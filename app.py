@@ -54,35 +54,45 @@ if "form_key" not in st.session_state: st.session_state.form_key = 0
 st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
 st.sidebar.title("👤 Acceso Vendedor")
 
-# --- 4. BARRA LATERAL ---
-dni_input = st.sidebar.text_input("DNI VENDEDOR", max_chars=9)
+# --- 4. BARRA LATERAL (GESTIÓN DE DOCUMENTOS 8 Y 9 DÍGITOS) ---
+st.sidebar.header("IDENTIFICACIÓN")
+dni_input = st.sidebar.text_input("DOCUMENTO (DNI/CE)", max_chars=9)
 
-# Solo números
+# 1. Limpiamos: solo nos quedamos con los números
 dni_digits = "".join(filter(str.isdigit, dni_input))
 
-# Validamos que sea 8 o 9
-if 8 <= len(dni_digits) <= 9:
-    # Si tiene 8 dígitos, le ponemos el cero para que sea texto de 8 (cruces estándar)
-    # Si tiene 9, se queda como 9.
-    dni_clean = dni_digits.zfill(len(dni_digits) if len(dni_digits) == 9 else 8)
+# 2. Validamos que tenga una longitud real (8 o 9)
+if len(dni_digits) >= 8:
+    # CLAVE: Quitamos todos los ceros a la izquierda solo para la búsqueda
+    # Así "0044...", "044..." y "44..." se vuelven todos "44..."
+    dni_busqueda = dni_digits.lstrip('0')
     
-    # Buscamos en el maestro asegurando que sea comparación de TEXTO
-    vendedor = df_maestro[df_maestro['DNI'].astype(str).str.strip() == dni_clean] if not df_maestro.empty else pd.DataFrame()
-    # ... resto del código de bienvenida ...
-#-----------------------------------------------------------------
-    if not vendedor.empty:
-        nom_v = vendedor.iloc[0]['NOMBRE VENDEDOR']
-        sup_v = vendedor.iloc[0]['SUPERVISOR']
-        zon_v = vendedor.iloc[0]['ZONAL']
-        st.sidebar.success(f"✅ Bienvenido: {nom_v}")
-    else:
-        nom_v = sup_v = zon_v = "N/A"
-        if dni_input: # Solo muestra error si escribió algo
-            st.sidebar.error("Vendedor no encontrado en la base.")
+    if not df_maestro.empty:
+        # Preparamos el Maestro: quitamos .0 (si viene de Excel) y ceros a la izquierda
+        df_maestro['DNI_COMP'] = (
+            df_maestro['DNI']
+            .astype(str)
+            .str.replace(r'\.0$', '', regex=True)
+            .str.strip()
+            .str.lstrip('0')
+        )
+        
+        # Buscamos la coincidencia exacta de los números significativos
+        vendedor_data = df_maestro[df_maestro['DNI_COMP'] == dni_busqueda]
+        
+        if not vendedor_data.empty:
+            st.session_state.nom_v = vendedor_data.iloc[0]['NOMBRE VENDEDOR']
+            st.session_state.zon_v = vendedor_data.iloc[0]['ZONAL']
+            
+            # Guardamos el DNI tal cual lo escribió el usuario para el registro
+            st.session_state.dni_original = dni_input 
+            
+            st.sidebar.success(f"✅ Bienvenido: {st.session_state.nom_v}")
+        else:
+            st.session_state.nom_v = "N/A"
+            st.sidebar.error("❌ Documento no encontrado")
 else:
-    nom_v = sup_v = zon_v = "N/A"
-    if len(dni_digits) > 0:
-        st.sidebar.warning("El documento debe tener 8 o 9 dígitos.")
+    st.session_state.nom_v = "N/A"
 
 st.sidebar.write("")
 st.sidebar.caption("©2026 by Dubby System SA, Todos los derechos reservados")
@@ -394,6 +404,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
