@@ -45,13 +45,18 @@ def cargar_datos():
         
     return df_est, df_reg
 
-# --- 3. INICIALIZACIÓN ---
-df_maestro, df_registros = cargar_datos()
-if "form_key" not in st.session_state: st.session_state.form_key = 0
-if 'nom_v' not in st.session_state:
-    st.session_state.nom_v = "N/A"
-if 'zon_v' not in st.session_state:
-    st.session_state.zon_v = "N/A"
+# --- 1. INICIALIZACIÓN (Poner al inicio del archivo) ---
+if 'nom_v' not in st.session_state: st.session_state.nom_v = "N/A"
+if 'zon_v' not in st.session_state: st.session_state.zon_v = "N/A"
+if 'sup_v' not in st.session_state: st.session_state.sup_v = "N/A"
+if 'dni_clean' not in st.session_state: st.session_state.dni_clean = ""
+if 'form_key' not in st.session_state: st.session_state.form_key = 0
+
+# Asignación de seguridad (para que el botón de guardar siempre las encuentre)
+nom_v = st.session_state.nom_v
+zon_v = st.session_state.zon_v
+sup_v = st.session_state.sup_v
+dni_clean = st.session_state.dni_clean
 
 # --- 4. BARRA LATERAL ---
 st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
@@ -83,10 +88,9 @@ if len(dni_digits) >= 7:
         if not vendedor_data.empty:
             st.session_state.nom_v = vendedor_data.iloc[0]['NOMBRE VENDEDOR']
             st.session_state.zon_v = vendedor_data.iloc[0]['ZONAL']
-            # Actualizamos las variables locales para el resto del código
-            nom_v = st.session_state.nom_v
-            zon_v = st.session_state.zon_v
-            st.sidebar.success(f"✅ Bienvenido: {nom_v}")
+            st.session_state.sup_v = vendedor_data.iloc[0]['SUPERVISOR'] # Asegúrate que esta columna exista
+            st.session_state.dni_clean = dni_input # <--- AQUÍ SE GUARDA PARA EL BOTÓN
+            st.sidebar.success(f"✅ Bienvenido: {st.session_state.nom_v}")
         else:
             st.session_state.nom_v = "N/A"
             nom_v = "N/A"
@@ -406,6 +410,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
