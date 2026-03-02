@@ -48,7 +48,10 @@ def cargar_datos():
 # --- 3. INICIALIZACIÓN ---
 df_maestro, df_registros = cargar_datos()
 if "form_key" not in st.session_state: st.session_state.form_key = 0
-
+if 'nom_v' not in st.session_state:
+    st.session_state.nom_v = "N/A"
+if 'zon_v' not in st.session_state:
+    st.session_state.zon_v = "N/A"
 
 # --- 4. BARRA LATERAL ---
 st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
@@ -404,6 +407,7 @@ with tab2:
             
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
