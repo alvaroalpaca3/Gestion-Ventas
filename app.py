@@ -61,6 +61,7 @@ df_maestro, df_registros = cargar_datos()
 
 # --- 5. BARRA LATERAL (ACCESO) ---
 st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
+st.sidebar.title("👤 Acceso Vendedor")
 dni_input = st.sidebar.text_input("DNI / CE VENDEDOR", max_chars=9)
 # Normalizamos para búsqueda
 dni_busqueda = "".join(filter(str.isdigit, dni_input)).lstrip('0')
@@ -79,6 +80,8 @@ else: st.session_state.nom_v = "N/A"
 
 # Variables locales para usar en el cuerpo
 nom_v, zon_v, sup_v, dni_clean = st.session_state.nom_v, st.session_state.zon_v, st.session_state.sup_v, st.session_state.dni_clean
+
+st.sidebar.caption("©2026 by Dubby System SA")
 
 # --- 6. CUERPO PRINCIPAL ---
 st.header("📊 GESTIÓN COMERCIAL")
@@ -274,6 +277,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
