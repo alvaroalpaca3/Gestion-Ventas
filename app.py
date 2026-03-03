@@ -27,7 +27,7 @@ def conectar_google():
         st.error(f"⚠️ Error de Conexión: {e}")
         return None
         
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=600)
 def cargar_datos():
     doc = conectar_google()
     if not doc: return pd.DataFrame(), pd.DataFrame()
@@ -314,6 +314,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
