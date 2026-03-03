@@ -21,7 +21,7 @@ def conectar_google():
         # Conexión directa
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
-        return client.open("GestionDiaria_Final")
+        return client.open("GestionDiaria")
     except Exception as e:
         # Esto te dirá si el problema es la llave o el nombre del archivo
         st.error(f"⚠️ Error de Conexión: {e}")
@@ -314,6 +314,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
