@@ -15,15 +15,22 @@ st.set_page_config(page_title="Sistema Comercial Dimiare", layout="wide")
 def conectar_google():
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        # Cargamos los secretos directamente
+        
+        # 1. Cargamos los secretos
         creds_dict = dict(st.secrets["gcp_service_account"])
+        
+        # 2. REPARACIÓN DE LLAVE (Evita error de Base64 y 65 caracteres)
+        # Esto quita los \n escritos y limpia espacios vacíos
+        raw_key = creds_dict["private_key"]
+        creds_dict["private_key"] = raw_key.replace("\\n", "\n").strip()
         
         # Conexión directa
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
+        
+        # IMPORTANTE: Verifica que tu Google Sheet se llame exactamente "GestionDiaria"
         return client.open("GestionDiaria")
     except Exception as e:
-        # Esto te dirá si el problema es la llave o el nombre del archivo
         st.error(f"⚠️ Error de Conexión: {e}")
         return None
         
@@ -110,8 +117,8 @@ with tab1:
             if detalle == "NO-VENTA":
                 opciones_nv = ["COMPETENCIA", "MALA EXPERIENCIA", "CARGO ALTO", "SIN COBERTURA", "YA TIENE SERVICIO"]
                 m_nv = st.selectbox("MOTIVO DE NO-VENTA *", options=opciones_nv, index=None, placeholder="Elija un motivo...")
-                st.info("💡 Solo debe llenar el motivo. DNI y Zonal se toman del login.")
-            
+                st.info(f"💡 Solo llena el motivo. DNI ({dni_clean}) y Zonal ({zon_v}) se guardan automáticamente.")
+              
             elif detalle == "REFERIDO":
                 n_ref = st.text_input("Nombre del Referido *").upper()
                 c_ref = st.text_input("Contacto Referido (9 dígitos) *", max_chars=9)
@@ -314,6 +321,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
