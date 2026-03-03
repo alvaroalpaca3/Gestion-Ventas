@@ -148,17 +148,71 @@ with tab1:
 
 # --- PESTAÑA 2: MI PROGRESO ---
 with tab_personal:
-    if nom_v == "N/A": st.warning("👈 Ingrese su DNI.")
+    if nom_v == "N/A": 
+        st.warning("👈 Ingrese su DNI en la barra lateral.")
     else:
         st.markdown(f"##### 📈 Mi Actividad: {nom_v}")
+        
         if not df_registros.empty:
+            # Identificamos la columna del vendedor (por nombre o posición)
             col_v = "NOMBRE VENDEDOR" if "NOMBRE VENDEDOR" in df_registros.columns else df_registros.columns[3]
+            
+            # Filtramos los datos del vendedor logueado
             df_mio = df_registros[df_registros[col_v].astype(str).str.strip() == nom_v].copy()
-            if df_mio.empty: st.info("Sin registros.")
+            
+            if df_mio.empty:
+                st.info(f"Aún no existen registros guardados para: {nom_v}")
             else:
-                # Lógica de tablas (Monitor Horario, Matriz, Avance)
-                st.dataframe(df_mio.tail(10), use_container_width=True, hide_index=True)
-        else: st.warning("⚠️ Datos saturados, refresca en un momento.")
+                tz = pytz.timezone('America/Lima')
+                hoy = datetime.now(tz).strftime("%d/%m/%Y")
+                
+                # Identificamos columnas clave dinámicamente
+                det_col = "DETALLE" if "DETALLE" in df_mio.columns else df_mio.columns[5]
+                fecha_col = "FECHA" if "FECHA" in df_mio.columns else df_mio.columns[-2]
+                hora_col = "HORA" if "HORA" in df_mio.columns else df_mio.columns[-1]
+
+                # --- 1. MONITOR DIARIO (HOY) ---
+                st.markdown("##### **1. Monitor Diario (Hoy)**")
+                df_mio_hoy = df_mio[df_mio[fecha_col] == hoy]
+                
+                if not df_mio_hoy.empty:
+                    mi_rh = df_mio_hoy.pivot_table(index=col_v, columns=hora_col, values=det_col, aggfunc="count", fill_value=0)
+                    mi_rh["TOTAL"] = mi_rh.sum(axis=1)
+                    st.dataframe(mi_rh.reset_index().rename(columns={col_v: "VENDEDOR"}), use_container_width=True, hide_index=True) 
+                else:
+                    st.caption(f"Sin actividad hoy {hoy}")
+
+                # --- 2. MATRIZ Y DONA (HOY) ---
+                if not df_mio_hoy.empty:
+                    st.markdown("##### **2. Matriz de Productividad (Hoy)**")
+                    mi_tp = df_mio_hoy.pivot_table(index=col_v, columns=det_col, values=fecha_col, aggfunc="count", fill_value=0)
+                    mi_tp["TOTAL"] = mi_tp.sum(axis=1)
+                    
+                    col_matriz, col_dona = st.columns([0.6, 0.4])
+                    with col_matriz:
+                        st.dataframe(mi_tp.reset_index().rename(columns={col_v: "VENDEDOR"}), use_container_width=True, hide_index=True)
+                    with col_dona:
+                        fig_m = px.pie(df_mio_hoy, names=det_col, hole=0.5, color_discrete_sequence=px.colors.qualitative.Pastel)
+                        fig_m.update_layout(margin=dict(t=0, b=0, l=0, r=0), height=200, showlegend=True)
+                        st.plotly_chart(fig_m, use_container_width=True)
+
+                # --- 3. AVANCE DEL MES ---
+                st.markdown("##### **3. Avance del Mes**")
+                mi_rd = df_mio.pivot_table(index=col_v, columns=fecha_col, values=det_col, aggfunc="count", fill_value=0)
+                
+                # Ordenamos fechas (de más reciente a más antigua)
+                mi_rd = mi_rd.reindex(sorted(mi_rd.columns, reverse=True), axis=1)
+                mi_rd["TOTAL ACUM."] = mi_rd.sum(axis=1)
+                
+                # Aplicamos el estilo condicional (Verde si es >= 40)
+                st.dataframe(
+                    mi_rd.reset_index().rename(columns={col_v: "VENDEDOR"}).style.applymap(
+                        lambda v: 'background-color: #90EE90; color: black;' if isinstance(v, (int, float)) and v >= 40 else '', 
+                        subset=mi_rd.columns[:-1]
+                    ), use_container_width=True, hide_index=True
+                )
+        else:
+            st.warning("⚠️ No hay datos cargados en la memoria. Intenta refrescar la página.")
 
 # --- PESTAÑA 3: ADMIN ---
 with tab2:
@@ -233,5 +287,6 @@ with tab2:
             )
     elif u_adm != "" or p_adm != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
