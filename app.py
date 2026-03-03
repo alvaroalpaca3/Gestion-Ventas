@@ -166,6 +166,7 @@ with tab1:
                             else:
                                 st.error(f"❌ Error inesperado: {e}")
                                 break # Si es otro error, no reintentamos
+
 # --- PESTAÑA 2: MI PROGRESO (FILTRO POR NOMBRE) ---
 with tab_personal:
     if nom_v == "N/A":
@@ -173,10 +174,15 @@ with tab_personal:
     else:
         st.markdown(f"##### 📈 Mi Actividad: {nom_v}")
         
-        if not df_registros.empty:
-            # Limpiamos y filtramos por el nombre detectado en el login
-            df_registros["NOMBRE VENDEDOR"] = df_registros["NOMBRE VENDEDOR"].astype(str).str.strip()
-            df_mio = df_registros[df_registros["NOMBRE VENDEDOR"] == nom_v].copy()
+        # Verificamos que df_registros exista y no esté vacío
+        if 'df_registros' in locals() and not df_registros.empty:
+            # 1. Limpieza y Filtro (Usamos copias para no afectar la base global)
+            # Buscamos la columna exacta, usualmente es 'NOMBRE VENDEDOR' o 'VENDEDOR' según tu Sheets
+            col_vendedor = "NOMBRE VENDEDOR" if "NOMBRE VENDEDOR" in df_registros.columns else df_registros.columns[3]
+            
+            df_temp = df_registros.copy()
+            df_temp[col_vendedor] = df_temp[col_vendedor].astype(str).str.strip()
+            df_mio = df_temp[df_temp[col_vendedor] == nom_v].copy()
             
             if df_mio.empty:
                 st.info(f"Aún no existen registros guardados para: {nom_v}")
@@ -184,46 +190,50 @@ with tab_personal:
                 tz = pytz.timezone('America/Lima')
                 hoy = datetime.now(tz).strftime("%d/%m/%Y")
                 
-                # 1. MONITOR DIARIO (HOY)
+                # --- 1. MONITOR DIARIO (HOY) ---
                 st.markdown("##### **1. Monitor Diario (Hoy)**")
-                df_mio_hoy = df_mio[df_mio["FECHA"] == hoy]
+                # Aseguramos que la columna FECHA exista antes de filtrar
+                fecha_col = "FECHA" if "FECHA" in df_mio.columns else df_mio.columns[-2]
+                df_mio_hoy = df_mio[df_mio[fecha_col] == hoy]
                 
                 if not df_mio_hoy.empty:
-                    mi_rh = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="HORA", values="DETALLE", aggfunc="count", fill_value=0)
+                    # Usamos DETALLE o la columna 5 que es donde está el tipo de gestión
+                    det_col = "DETALLE" if "DETALLE" in df_mio.columns else df_mio.columns[5]
+                    hora_col = "HORA" if "HORA" in df_mio.columns else df_mio.columns[-1]
+                    
+                    mi_rh = df_mio_hoy.pivot_table(index=col_vendedor, columns=hora_col, values=det_col, aggfunc="count", fill_value=0)
                     mi_rh["TOTAL"] = mi_rh.sum(axis=1)
-                    mi_rh_final = mi_rh.reset_index()
-                    mi_rh_final.rename(columns={"NOMBRE VENDEDOR": "VENDEDOR"}, inplace=True)
-
-                    st.dataframe(mi_rh_final, use_container_width=True, hide_index=True) 
+                    st.dataframe(mi_rh.reset_index().rename(columns={col_vendedor: "VENDEDOR"}), use_container_width=True, hide_index=True) 
                 else:
                     st.caption(f"Sin actividad hoy {hoy}")
 
-                # 2. MATRIZ Y DONA (HOY)
-                st.markdown("##### **2. Matriz de Productividad (Hoy)**")
+                # --- 2. MATRIZ Y DONA (HOY) ---
                 if not df_mio_hoy.empty:
-                    mi_tp = df_mio_hoy.pivot_table(index="NOMBRE VENDEDOR", columns="DETALLE", values="FECHA", aggfunc="count", fill_value=0)
+                    st.markdown("##### **2. Matriz de Productividad (Hoy)**")
+                    mi_tp = df_mio_hoy.pivot_table(index=col_vendedor, columns=det_col, values=fecha_col, aggfunc="count", fill_value=0)
                     mi_tp["TOTAL"] = mi_tp.sum(axis=1)
-                    st.dataframe(mi_tp.reset_index().rename(columns={"NOMBRE VENDEDOR": "VENDEDOR"}), use_container_width=True, hide_index=True)
+                    st.dataframe(mi_tp.reset_index().rename(columns={col_vendedor: "VENDEDOR"}), use_container_width=True, hide_index=True)
 
-                    fig_m = px.pie(df_mio_hoy, names='DETALLE', hole=0.5)
+                    fig_m = px.pie(df_mio_hoy, names=det_col, hole=0.5)
                     fig_m.update_layout(margin=dict(t=20, b=0, l=0, r=0), height=250, showlegend=True)
                     st.plotly_chart(fig_m, use_container_width=True)
 
-                # 3. AVANCE DEL MES
+                # --- 3. AVANCE DEL MES ---
                 st.markdown("##### **3. Avance del Mes**")
-                mi_rd = df_mio.pivot_table(index="NOMBRE VENDEDOR", columns="FECHA", values="DETALLE", aggfunc="count", fill_value=0)
+                mi_rd = df_mio.pivot_table(index=col_vendedor, columns=fecha_col, values=det_col, aggfunc="count", fill_value=0)
+                # Ordenar fechas de más reciente a más antigua
                 mi_rd = mi_rd.reindex(sorted(mi_rd.columns, reverse=True), axis=1)
                 mi_rd["TOTAL"] = mi_rd.sum(axis=1)
                 
                 st.dataframe(
-                    mi_rd.reset_index().rename(columns={"NOMBRE VENDEDOR": "VENDEDOR"}).style.applymap(
+                    mi_rd.reset_index().rename(columns={col_vendedor: "VENDEDOR"}).style.applymap(
                         lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', 
                         subset=mi_rd.columns[:-1]
                     ), use_container_width=True, hide_index=True
                 )
         else:
-            st.error("No se pudo conectar con la base de registros.")
-
+            st.warning("⚠️ Los datos no están disponibles en este momento. La base de datos está saturada, por favor espera un minuto y refresca la página.")
+            
 # --- PESTAÑA 3: DASHBOARD (ADMIN) ---
 with tab2:
     st.markdown("##### 🔐 Acceso Administrador")
@@ -291,6 +301,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
