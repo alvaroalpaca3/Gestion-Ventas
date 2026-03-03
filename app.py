@@ -15,20 +15,15 @@ st.set_page_config(page_title="Sistema Comercial Dimiare", layout="wide")
 def conectar_google():
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        
-        # 1. Cargamos los secretos
         creds_dict = dict(st.secrets["gcp_service_account"])
         
-        # 2. REPARACIÓN DE LLAVE (Evita error de Base64 y 65 caracteres)
-        # Esto quita los \n escritos y limpia espacios vacíos
-        raw_key = creds_dict["private_key"]
-        creds_dict["private_key"] = raw_key.replace("\\n", "\n").strip()
+        # IMPORTANTE: Esto convierte los "\n" de texto en saltos de línea reales
+        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
         
-        # Conexión directa
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
         
-        # IMPORTANTE: Verifica que tu Google Sheet se llame exactamente "GestionDiaria"
+        # Verifica que el nombre sea exacto "GestionDiaria"
         return client.open("GestionDiaria")
     except Exception as e:
         st.error(f"⚠️ Error de Conexión: {e}")
@@ -321,6 +316,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
