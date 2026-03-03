@@ -1,3 +1,4 @@
+import streamlit as st
 import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials
 import gspread
@@ -7,14 +8,14 @@ import time
 import plotly.express as px
 import io
 
-# --- 1. CONFIGURACIÓN DE PÁGINA (SIEMPRE PRIMERO) ---
+# --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Sistema Comercial Dimiare", layout="wide")
 
 # --- 2. BLOQUE DE SEGURIDAD (MANTENIMIENTO) ---
 if st.secrets.get("mantenimiento", False):
     if st.query_params.get("admin") != "true":
         st.error("⚠️ SISTEMA EN MANTENIMIENTO")
-        st.info("Estamos optimizando la base de datos para mejorar la velocidad. Regresamos en breve.")
+        st.info("Estamos optimizando la base de datos. Regresamos en breve.")
         st.stop()
     else:
         st.sidebar.success("🛠️ MODO PRUEBA ACTIVO")
@@ -35,23 +36,21 @@ def conectar_google():
 @st.cache_data(ttl=600)
 def cargar_datos():
     doc = conectar_google()
-    df_est = pd.DataFrame()
-    df_reg = pd.DataFrame()
+    df_est, df_reg = pd.DataFrame(), pd.DataFrame()
     if doc:
         try:
-            # Cargar Estructura
             ws_est = doc.worksheet("Estructura")
             lista_est = ws_est.get_all_values()
             df_est = pd.DataFrame(lista_est[1:], columns=lista_est[0])
             df_est['DNI'] = df_est['DNI'].astype(str).str.replace(r'[^0-9]', '', regex=True).str.strip()
-            # Cargar Registros
+            
             ws_reg = doc.sheet1
             df_reg = pd.DataFrame(ws_reg.get_all_records())
             df_reg.columns = [str(c).strip().upper() for c in df_reg.columns]
         except: pass
     return df_est, df_reg
 
-# --- 4. INICIALIZACIÓN DE VARIABLES DE SESIÓN ---
+# --- 4. INICIALIZACIÓN DE SESIÓN ---
 if 'nom_v' not in st.session_state: st.session_state.nom_v = "N/A"
 if 'zon_v' not in st.session_state: st.session_state.zon_v = "N/A"
 if 'sup_v' not in st.session_state: st.session_state.sup_v = "N/A"
@@ -62,37 +61,29 @@ df_maestro, df_registros = cargar_datos()
 
 # --- 5. BARRA LATERAL (ACCESO) ---
 st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
-st.sidebar.title("👤 Acceso Vendedor")
-
 dni_input = st.sidebar.text_input("DNI / CE VENDEDOR", max_chars=9)
+# Normalizamos para búsqueda
 dni_busqueda = "".join(filter(str.isdigit, dni_input)).lstrip('0')
 
-if len(dni_busqueda) >= 6:
-    if not df_maestro.empty:
-        df_maestro['DNI_MATCH'] = df_maestro['DNI'].astype(str).str.replace(r'\.0$', '', regex=True).str.lstrip('0')
-        vendedor_data = df_maestro[df_maestro['DNI_MATCH'] == dni_busqueda]
-        if not vendedor_data.empty:
-            st.session_state.nom_v = vendedor_data.iloc[0]['NOMBRE VENDEDOR']
-            st.session_state.zon_v = vendedor_data.iloc[0]['ZONAL']
-            st.session_state.sup_v = vendedor_data.iloc[0]['SUPERVISOR']
-            st.session_state.dni_clean = dni_input
-            st.sidebar.success(f"✅ Bienvenido: {st.session_state.nom_v}")
-        else:
-            st.session_state.nom_v = "N/A"
-            st.sidebar.error("❌ Documento no encontrado")
-else:
-    st.session_state.nom_v = "N/A"
+if len(dni_busqueda) >= 6 and not df_maestro.empty:
+    df_maestro['DNI_MATCH'] = df_maestro['DNI'].astype(str).str.replace(r'\.0$', '', regex=True).str.lstrip('0')
+    vendedor_data = df_maestro[df_maestro['DNI_MATCH'] == dni_busqueda]
+    if not vendedor_data.empty:
+        st.session_state.nom_v = vendedor_data.iloc[0]['NOMBRE VENDEDOR']
+        st.session_state.zon_v = vendedor_data.iloc[0]['ZONAL']
+        st.session_state.sup_v = vendedor_data.iloc[0]['SUPERVISOR']
+        st.session_state.dni_clean = dni_input # Mantiene ceros
+        st.sidebar.success(f"✅ Bienvenido: {st.session_state.nom_v}")
+    else: st.session_state.nom_v = "N/A"
+else: st.session_state.nom_v = "N/A"
 
-nom_v = st.session_state.nom_v
-zon_v = st.session_state.zon_v
-sup_v = st.session_state.sup_v
-dni_clean = st.session_state.dni_clean
+# Variables locales para usar en el cuerpo
+nom_v, zon_v, sup_v, dni_clean = st.session_state.nom_v, st.session_state.zon_v, st.session_state.sup_v, st.session_state.dni_clean
 
-# --- 5. CUERPO PRINCIPAL ---
+# --- 6. CUERPO PRINCIPAL ---
 st.header("📊 GESTIÓN COMERCIAL")
 tab1, tab_personal, tab2 = st.tabs(["📝 REGISTRO", "📈 MI PROGRESO", "🔐 ADMIN"])
 
-# --- PESTAÑA 1: FORMULARIO ---
 with tab1:
     if nom_v == "N/A":
         st.info("👈 Ingresa tu DNI en la barra lateral para habilitar el formulario.")
@@ -106,12 +97,10 @@ with tab1:
             if detalle == "NO-VENTA":
                 opciones_nv = ["COMPETENCIA", "MALA EXPERIENCIA", "CARGO ALTO", "SIN COBERTURA", "YA TIENE SERVICIO"]
                 m_nv = st.selectbox("MOTIVO DE NO-VENTA *", options=opciones_nv, index=None, placeholder="Elija un motivo...")
-                st.info(f"💡 Solo llena el motivo. DNI ({dni_clean}) y Zonal ({zon_v}) se guardan automáticamente.")
-              
+                st.info(f"💡 DNI ({dni_clean}) y Zonal ({zon_v}) automáticos.")
             elif detalle == "REFERIDO":
                 n_ref = st.text_input("Nombre del Referido *").upper()
                 c_ref = st.text_input("Contacto Referido (9 dígitos) *", max_chars=9)
-            
             elif detalle in ["VENTA FIJA", "CLIENTE AGENDADO"]:
                 ca, cb = st.columns(2)
                 with ca:
@@ -131,46 +120,23 @@ with tab1:
 
             if submit:
                 error = False
-                # 1. Validaciones Generales
                 if detalle == "SELECCIONA":
-                    st.error("❌ Elija un tipo de gestión.")
-                    error = True
-                
-                # 2. Validaciones No-Venta
-                elif detalle == "NO-VENTA":
-                    if m_nv is None:
-                        st.error("❌ Seleccione el motivo de No-Venta.")
-                        error = True
-
-                # 3. Validaciones Referido
-                elif detalle == "REFERIDO":
-                    if not n_ref.strip() or len(c_ref) != 9 or not c_ref.isdigit():
-                        st.error("❌ El nombre es obligatorio y el celular debe tener 9 dígitos.")
-                        error = True
-
-                # 4. Validaciones Venta / Agendado
+                    st.error("❌ Elija un tipo de gestión."); error = True
+                elif detalle == "NO-VENTA" and m_nv is None:
+                    st.error("❌ Seleccione el motivo de No-Venta."); error = True
+                elif detalle == "REFERIDO" and (not n_ref.strip() or len(c_ref) != 9 or not c_ref.isdigit()):
+                    st.error("❌ Verifique nombre y celular (9 dígitos)."); error = True
                 elif detalle in ["VENTA FIJA", "CLIENTE AGENDADO"]:
                     if any(x == "SELECCIONA" or not str(x).strip() for x in [n_cl, d_cl, dir_ins, c1, n_ped, mail, c_fe, t_op, prod]):
-                        st.error("❌ Complete todos los campos obligatorios (*).")
-                        error = True
-                    elif len(d_cl) < 8:
-                        st.error("❌ El DNI del cliente debe tener 8 dígitos.")
-                        error = True
-                    elif len(c1) != 9 or not c1.isdigit():
-                        st.error("❌ El celular debe tener 9 dígitos numéricos.")
-                        error = True
-                    elif len(n_ped) != 10 or not n_ped.isdigit():
-                        st.error("❌ El N° de Pedido debe tener 10 dígitos.")
-                        error = True
-                    elif len(c_fe) != 13:
-                        st.error("❌ El código FE debe tener 13 caracteres.")
-                        error = True
+                        st.error("❌ Complete todos los campos (*)."); error = True
+                    elif len(d_cl) < 8 or len(c1) != 9 or len(n_ped) != 10 or len(c_fe) != 13:
+                        st.error("❌ Error en longitud de DNI (8), Celular (9), Pedido (10) o FE (13)."); error = True
 
                 if not error:
                     try:
                         tz = pytz.timezone('America/Lima')
                         ahora = datetime.now(tz)
-                        # Armado de fila (usando f"'{variable}" para forzar texto con ceros en Excel)
+                        # IMPORTANTE: El apóstrofe f"'{variable}" protege los ceros iniciales
                         fila = [
                             ahora.strftime("%d/%m/%Y %H:%M:%S"), zon_v, f"'{dni_clean}", nom_v, sup_v, 
                             detalle, t_op, n_cl, f"'{d_cl}", dir_ins, mail, f"'{c1}", "N/A", 
@@ -180,9 +146,7 @@ with tab1:
                         conectar_google().sheet1.append_row(fila, value_input_option='USER_ENTERED')
                         st.cache_data.clear()
                         st.success("✅ ¡Registro guardado!")
-                        time.sleep(1)
-                        st.session_state.form_key += 1
-                        st.rerun()
+                        time.sleep(1); st.session_state.form_key += 1; st.rerun()
                     except Exception as e: st.error(f"Error: {e}")
 
 # --- PESTAÑA 2: MI PROGRESO (FILTRO POR NOMBRE) ---
@@ -310,6 +274,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
