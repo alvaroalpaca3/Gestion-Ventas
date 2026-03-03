@@ -10,38 +10,34 @@ import io
 
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Sistema Comercial Dimiare", layout="wide")
-
-# --- 2. CONEXIÓN A GOOGLE SHEETS ---
+# ----2 conexion
 def conectar_google():
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        
-        if "gcp_service_account" not in st.secrets:
-            st.error("❌ No se configuraron los Secrets")
-            return None
-            
-        # Convertimos a dict y limpiamos
         creds_dict = dict(st.secrets["gcp_service_account"])
         
-        # LIMPIEZA TOTAL DE CARACTERES EXTRAÑOS
-        raw_key = str(creds_dict["private_key"])
+        # --- REPARACIÓN MANUAL DE LA LLAVE ---
+        raw_key = creds_dict["private_key"]
         
-        # Eliminamos saltos de línea literales, espacios y comillas accidentales
-        clean_key = raw_key.replace("\\n", "\n").strip()
+        # Quitamos el encabezado y pie para limpiar el centro
+        header = "-----BEGIN PRIVATE KEY-----"
+        footer = "-----END PRIVATE KEY-----"
         
-        # Si por error se pegó con comillas extras al inicio o fin, las quitamos
-        if clean_key.startswith('"') and clean_key.endswith('"'):
-            clean_key = clean_key[1:-1]
-            
-        creds_dict["private_key"] = clean_key
+        # Sacamos el contenido puro de la clave
+        key_body = raw_key.replace(header, "").replace(footer, "").replace(" ", "").replace("\n", "").strip()
         
-        # Autorización
+        # Google necesita que la llave tenga saltos de línea reales cada 64 caracteres.
+        # Esta línea hace magia: reconstruye la llave con el formato exacto que Google ama.
+        formatted_key = header + "\n" + key_body + "\n" + footer + "\n"
+        
+        creds_dict["private_key"] = formatted_key
+        # -------------------------------------
+        
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
         
-        # Asegúrate que el nombre sea "GestionDiaria" o "GestionDiaria_Final" según tu Excel
+        # Verifica que el nombre del Excel sea exacto "GestionDiaria"
         return client.open("GestionDiaria")
-        
     except Exception as e:
         st.error(f"⚠️ Error de Conexión: {e}")
         return None
@@ -333,6 +329,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
