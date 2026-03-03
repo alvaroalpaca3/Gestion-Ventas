@@ -8,10 +8,10 @@ import time
 import plotly.express as px
 import io
 
-# --- 1. CONFIGURACIÓN DE PÁGINA ---
+# --- 1. CONFIGURACIÓN DE PÁGINA (DEBE SER LO PRIMERO) ---
 st.set_page_config(page_title="Sistema Comercial Dimiare", layout="wide")
 
-# --- BLOQUE DE SEGURIDAD (MANTENIMIENTO CON LLAVE MAESTRA) ---
+# --- 2. BLOQUE DE SEGURIDAD (MANTENIMIENTO) ---
 mantenimiento_activo = st.secrets.get("mantenimiento", False)
 
 if mantenimiento_activo:
@@ -20,13 +20,13 @@ if mantenimiento_activo:
     
     if not es_admin_probando:
         st.error("⚠️ SISTEMA EN MANTENIMIENTO")
-        st.info("Estamos optimizando la base de datos. El servicio se restablecerá en breve. ¡Gracias!")
-        st.stop() # Bloquea a todos los que no tengan el link especial
+        st.info("Estamos optimizando la base de datos para mejorar la velocidad. Regresamos en breve.")
+        st.stop() 
     else:
         st.sidebar.success("🛠️ MODO PRUEBA ACTIVO")
         st.sidebar.info("Solo tú puedes ver la app ahora.")
-    
-# ---- 2. CONEXIÓN Y CARGA DE DATOS ----
+
+# --- 3. CONEXIÓN Y CARGA DE DATOS ---
 def conectar_google():
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -46,39 +46,44 @@ def cargar_datos():
     df_reg = pd.DataFrame()
     
     if doc:
-        # 1. Cargar Estructura
+        # Cargar Estructura (Vendedores)
         try:
             ws_est = doc.worksheet("Estructura")
             lista_est = ws_est.get_all_values()
             df_est = pd.DataFrame(lista_est[1:], columns=lista_est[0])
             df_est['DNI'] = df_est['DNI'].astype(str).str.replace(r'[^0-9]', '', regex=True).str.strip()
         except: 
-            pass
+            df_est = pd.DataFrame()
 
-        # 2. Cargar Registros
+        # Cargar Registros (Base de Datos)
         try:
             ws_reg = doc.sheet1
             df_reg = pd.DataFrame(ws_reg.get_all_records())
             df_reg.columns = [str(c).strip().upper() for c in df_reg.columns]
+        except: 
+            df_reg = pd.DataFrame()
             
-# --- 3. INICIALIZACIÓN DE VARIABLES DE SESIÓN ---
+    return df_est, df_reg
+
+# --- 4. EJECUCIÓN DE CARGA Y SESIÓN ---
 if 'nom_v' not in st.session_state: st.session_state.nom_v = "N/A"
 if 'zon_v' not in st.session_state: st.session_state.zon_v = "N/A"
 if 'sup_v' not in st.session_state: st.session_state.sup_v = "N/A"
 if 'dni_clean' not in st.session_state: st.session_state.dni_clean = ""
-if 'form_key' not in st.session_state: st.session_state.form_key = 0
 
-# --- 4. BARRA LATERAL (ACCESO) ---
+# Cargamos los datos para que df_maestro exista
+df_maestro, df_registros = cargar_datos()
+
+# --- 5. BARRA LATERAL (ACCESO) ---
 st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
 st.sidebar.title("👤 Acceso Vendedor")
 
 dni_input = st.sidebar.text_input("DNI / CE VENDEDOR", max_chars=9)
-# Normalizamos input para búsqueda (quitando ceros a la izquierda)
 dni_busqueda = "".join(filter(str.isdigit, dni_input)).lstrip('0')
 
 if len(dni_busqueda) >= 6:
     if not df_maestro.empty:
-        # Normalizamos columna DNI del Maestro para match
+        # Normalizamos para match
         df_maestro['DNI_MATCH'] = df_maestro['DNI'].astype(str).str.replace(r'\.0$', '', regex=True).str.lstrip('0')
         vendedor_data = df_maestro[df_maestro['DNI_MATCH'] == dni_busqueda]
         
@@ -86,7 +91,7 @@ if len(dni_busqueda) >= 6:
             st.session_state.nom_v = vendedor_data.iloc[0]['NOMBRE VENDEDOR']
             st.session_state.zon_v = vendedor_data.iloc[0]['ZONAL']
             st.session_state.sup_v = vendedor_data.iloc[0]['SUPERVISOR']
-            st.session_state.dni_clean = dni_input # Guardamos con ceros para el Excel
+            st.session_state.dni_clean = dni_input
             st.sidebar.success(f"✅ Bienvenido: {st.session_state.nom_v}")
         else:
             st.session_state.nom_v = "N/A"
@@ -94,11 +99,11 @@ if len(dni_busqueda) >= 6:
 else:
     st.session_state.nom_v = "N/A"
 
-# Variables locales
-nom_v = st.session_state.nom_v
-zon_v = st.session_state.zon_v
-sup_v = st.session_state.sup_v
-dni_clean = st.session_state.dni_clean
+# --- 6. CUERPO PRINCIPAL ---
+st.title("Gestión de Ventas")
+st.write(f"**Vendedor:** {st.session_state.nom_v} | **Zonal:** {st.session_state.zon_v}")
+
+# Aquí iría tu formulario de registro...
 
 st.sidebar.caption("©2026 by Dubby System SA")
 
@@ -324,6 +329,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
