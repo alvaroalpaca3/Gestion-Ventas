@@ -1,4 +1,3 @@
-¡Perfecto! Ahora que tengo la estructura de tu formulario y dashboard, he ensamblado todo el rompecabezas. He respetado cada una de tus variables, tus fórmulas de validación, tus colores de metas (verde si es $\ge 40$) y tus gráficos de Plotly.Aquí tienes el código definitivo. Borra todo el contenido de tu app.py y pega esto. Este bloque ya incluye el "muro" de mantenimiento, la conexión rápida con caché y todas tus pestañas funcionando.Pythonimport streamlit as st
 import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials
 import gspread
@@ -311,6 +310,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
