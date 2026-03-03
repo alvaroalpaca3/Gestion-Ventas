@@ -15,15 +15,35 @@ st.set_page_config(page_title="Sistema Comercial Dimiare", layout="wide")
 def conectar_google():
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        
+        # Cargamos los secretos
         creds_dict = dict(st.secrets["gcp_service_account"])
         
-        # IMPORTANTE: Esto convierte los "\n" de texto en saltos de línea reales
-        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+        # --- LIMPIEZA EXTREMA DE LLAVE ---
+        raw_key = creds_dict["private_key"]
+        
+        # 1. Quitamos espacios accidentales
+        raw_key = raw_key.strip()
+        
+        # 2. Si la llave tiene saltos de línea reales, los quitamos y 
+        # luego volvemos a poner los \n correctos que espera Google.
+        if "-----BEGIN PRIVATE KEY-----" in raw_key:
+            # Quitamos el encabezado y pie temporalmente para limpiar el centro
+            header = "-----BEGIN PRIVATE KEY-----"
+            footer = "-----END PRIVATE KEY-----"
+            content = raw_key.replace(header, "").replace(footer, "").replace("\n", "").replace(" ", "")
+            # Reconstruimos la llave con el formato exacto de Google
+            clean_key = f"{header}\n{content}\n{footer}\n"
+        else:
+            clean_key = raw_key.replace("\\n", "\n")
+
+        creds_dict["private_key"] = clean_key
+        # ---------------------------------
         
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
         
-        # Verifica que el nombre sea exacto "GestionDiaria"
+        # Asegúrate de que el nombre del archivo en Google Drive sea exacto
         return client.open("GestionDiaria")
     except Exception as e:
         st.error(f"⚠️ Error de Conexión: {e}")
@@ -316,6 +336,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
