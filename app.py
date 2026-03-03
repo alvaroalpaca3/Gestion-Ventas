@@ -16,27 +16,12 @@ def conectar_google():
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds_dict = dict(st.secrets["gcp_service_account"])
         
-        # --- REPARACIÓN MANUAL DE LA LLAVE ---
-        raw_key = creds_dict["private_key"]
-        
-        # Quitamos el encabezado y pie para limpiar el centro
-        header = "-----BEGIN PRIVATE KEY-----"
-        footer = "-----END PRIVATE KEY-----"
-        
-        # Sacamos el contenido puro de la clave
-        key_body = raw_key.replace(header, "").replace(footer, "").replace(" ", "").replace("\n", "").strip()
-        
-        # Google necesita que la llave tenga saltos de línea reales cada 64 caracteres.
-        # Esta línea hace magia: reconstruye la llave con el formato exacto que Google ama.
-        formatted_key = header + "\n" + key_body + "\n" + footer + "\n"
-        
-        creds_dict["private_key"] = formatted_key
-        # -------------------------------------
+        # Esto repara los saltos de línea de la nueva llave
+        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
         
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
         
-        # Verifica que el nombre del Excel sea exacto "GestionDiaria"
         return client.open("GestionDiaria")
     except Exception as e:
         st.error(f"⚠️ Error de Conexión: {e}")
@@ -329,6 +314,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
