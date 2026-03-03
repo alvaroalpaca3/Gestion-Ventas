@@ -8,11 +8,20 @@ import time
 import plotly.express as px
 import io
 
-# --- BLOQUE DE SEGURIDAD (MANTENIMIENTO) ---
-if st.secrets.get("mantenimiento", False):
-    st.error("⚠️ SISTEMA EN MANTENIMIENTO")
-    st.info("Estamos optimizando la base de datos. El servicio se restablecerá en breve para evitar errores de conexión. ¡Gracias!")
-    st.stop() # Esto detiene el resto de la web
+# --- BLOQUE DE SEGURIDAD (MANTENIMIENTO CON LLAVE MAESTRA) ---
+mantenimiento_activo = st.secrets.get("mantenimiento", False)
+
+if mantenimiento_activo:
+    # Revisamos si en la URL pusiste ?admin=true
+    es_admin_probando = st.query_params.get("admin") == "true"
+    
+    if not es_admin_probando:
+        st.error("⚠️ SISTEMA EN MANTENIMIENTO")
+        st.info("Estamos optimizando la base de datos. El servicio se restablecerá en breve. ¡Gracias!")
+        st.stop() # Bloquea a todos los que no tengan el link especial
+    else:
+        st.sidebar.success("🛠️ MODO PRUEBA ACTIVO")
+        st.sidebar.info("Solo tú puedes ver la app ahora.")
     
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Sistema Comercial Dimiare", layout="wide")
@@ -323,6 +332,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
