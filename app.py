@@ -1,32 +1,34 @@
-import streamlit as st
+¡Perfecto! Ahora que tengo la estructura de tu formulario y dashboard, he ensamblado todo el rompecabezas. He respetado cada una de tus variables, tus fórmulas de validación, tus colores de metas (verde si es $\ge 40$) y tus gráficos de Plotly.Aquí tienes el código definitivo. Borra todo el contenido de tu app.py y pega esto. Este bloque ya incluye el "muro" de mantenimiento, la conexión rápida con caché y todas tus pestañas funcionando.Pythonimport streamlit as st
 import pandas as pd
-import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import gspread
 from datetime import datetime
 import pytz
 import time
 import plotly.express as px
 import io
 
-# --- 1. CONFIGURACIÓN DE PÁGINA ---
+# --- 1. CONFIGURACIÓN DE PÁGINA (SIEMPRE PRIMERO) ---
 st.set_page_config(page_title="Sistema Comercial Dimiare", layout="wide")
 
 # --- 2. BLOQUE DE SEGURIDAD (MANTENIMIENTO) ---
 if st.secrets.get("mantenimiento", False):
     if st.query_params.get("admin") != "true":
         st.error("⚠️ SISTEMA EN MANTENIMIENTO")
+        st.info("Estamos optimizando la base de datos para mejorar la velocidad. Regresamos en breve.")
         st.stop()
     else:
         st.sidebar.success("🛠️ MODO PRUEBA ACTIVO")
 
-# --- 3. CONEXIÓN Y CARGA ---
+# --- 3. CONEXIÓN Y CARGA DE DATOS ---
 def conectar_google():
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds_dict = dict(st.secrets["gcp_service_account"])
         creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-        return gspread.authorize(creds).open("GestionDiaria")
+        client = gspread.authorize(creds)
+        return client.open("GestionDiaria")
     except Exception as e:
         st.error(f"⚠️ Error de Conexión: {e}")
         return None
@@ -34,42 +36,58 @@ def conectar_google():
 @st.cache_data(ttl=600)
 def cargar_datos():
     doc = conectar_google()
-    df_est, df_reg = pd.DataFrame(), pd.DataFrame()
+    df_est = pd.DataFrame()
+    df_reg = pd.DataFrame()
     if doc:
         try:
+            # Cargar Estructura
             ws_est = doc.worksheet("Estructura")
             lista_est = ws_est.get_all_values()
             df_est = pd.DataFrame(lista_est[1:], columns=lista_est[0])
             df_est['DNI'] = df_est['DNI'].astype(str).str.replace(r'[^0-9]', '', regex=True).str.strip()
-            
+            # Cargar Registros
             ws_reg = doc.sheet1
             df_reg = pd.DataFrame(ws_reg.get_all_records())
             df_reg.columns = [str(c).strip().upper() for c in df_reg.columns]
         except: pass
     return df_est, df_reg
 
-# --- 4. SESIÓN Y EJECUCIÓN ---
+# --- 4. INICIALIZACIÓN DE VARIABLES DE SESIÓN ---
 if 'nom_v' not in st.session_state: st.session_state.nom_v = "N/A"
 if 'zon_v' not in st.session_state: st.session_state.zon_v = "N/A"
+if 'sup_v' not in st.session_state: st.session_state.sup_v = "N/A"
+if 'dni_clean' not in st.session_state: st.session_state.dni_clean = ""
+if 'form_key' not in st.session_state: st.session_state.form_key = 0
 
 df_maestro, df_registros = cargar_datos()
 
-# --- 5. BARRA LATERAL ---
+# --- 5. BARRA LATERAL (ACCESO) ---
 st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
+st.sidebar.title("👤 Acceso Vendedor")
+
 dni_input = st.sidebar.text_input("DNI / CE VENDEDOR", max_chars=9)
 dni_busqueda = "".join(filter(str.isdigit, dni_input)).lstrip('0')
 
-if len(dni_busqueda) >= 6 and not df_maestro.empty:
-    df_maestro['DNI_MATCH'] = df_maestro['DNI'].astype(str).str.replace(r'\.0$', '', regex=True).str.lstrip('0')
-    vendedor_data = df_maestro[df_maestro['DNI_MATCH'] == dni_busqueda]
-    if not vendedor_data.empty:
-        st.session_state.nom_v = vendedor_data.iloc[0]['NOMBRE VENDEDOR']
-        st.session_state.zon_v = vendedor_data.iloc[0]['ZONAL']
-        st.sidebar.success(f"✅ Bienvenido: {st.session_state.nom_v}")
-    else:
-        st.session_state.nom_v = "N/A"
+if len(dni_busqueda) >= 6:
+    if not df_maestro.empty:
+        df_maestro['DNI_MATCH'] = df_maestro['DNI'].astype(str).str.replace(r'\.0$', '', regex=True).str.lstrip('0')
+        vendedor_data = df_maestro[df_maestro['DNI_MATCH'] == dni_busqueda]
+        if not vendedor_data.empty:
+            st.session_state.nom_v = vendedor_data.iloc[0]['NOMBRE VENDEDOR']
+            st.session_state.zon_v = vendedor_data.iloc[0]['ZONAL']
+            st.session_state.sup_v = vendedor_data.iloc[0]['SUPERVISOR']
+            st.session_state.dni_clean = dni_input
+            st.sidebar.success(f"✅ Bienvenido: {st.session_state.nom_v}")
+        else:
+            st.session_state.nom_v = "N/A"
+            st.sidebar.error("❌ Documento no encontrado")
+else:
+    st.session_state.nom_v = "N/A"
 
-st.sidebar.caption("©2026 by Dubby System SA")
+nom_v = st.session_state.nom_v
+zon_v = st.session_state.zon_v
+sup_v = st.session_state.sup_v
+dni_clean = st.session_state.dni_clean
 
 # --- 5. CUERPO PRINCIPAL ---
 st.header("📊 GESTIÓN COMERCIAL")
@@ -293,6 +311,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
