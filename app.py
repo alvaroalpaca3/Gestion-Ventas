@@ -15,14 +15,18 @@ st.set_page_config(page_title="Sistema Comercial Dimiare", layout="wide")
 def conectar_google():
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        creds_dict = st.secrets["gcp_service_account"]
+        # Cargamos los secretos directamente
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        
+        # Conexión directa
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
-        return client.open("GestionDiaria")
+        return client.open("GestionDiaria_Final")
     except Exception as e:
-        st.error("⚠️ Error de enlace: Revisa las credenciales en st.secrets.")
+        # Esto te dirá si el problema es la llave o el nombre del archivo
+        st.error(f"⚠️ Error de Conexión: {e}")
         return None
-
+        
 @st.cache_data(ttl=60)
 def cargar_datos():
     doc = conectar_google()
@@ -310,6 +314,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
