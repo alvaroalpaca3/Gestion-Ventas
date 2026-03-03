@@ -99,16 +99,6 @@ if len(dni_busqueda) >= 6:
 else:
     st.session_state.nom_v = "N/A"
 
-# --- 7. VERIFICACIÓN FINAL ---
-# Aquí tu línea 116 (if nom_v == "N/A") ya funcionará perfecto
-if st.session_state.nom_v == "N/A":
-    st.warning("Por favor, ingrese su DNI en la barra lateral para comenzar.")
-else:
-    st.write(f"Panel de gestión para: **{st.session_state.nom_v}**")
-    # Aquí sigue el resto de tu formulario...
-
-# Aquí iría tu formulario de registro...
-
 st.sidebar.caption("©2026 by Dubby System SA")
 
 # --- 6. CUERPO PRINCIPAL ---
@@ -339,6 +329,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
