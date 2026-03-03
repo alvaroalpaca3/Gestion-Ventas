@@ -8,11 +8,6 @@ import time
 import plotly.express as px
 import io
 
-import streamlit as st
-import pandas as pd
-from oauth2client.service_account import ServiceAccountCredentials
-import gspread
-
 # --- 1. CONFIGURACIÓN DE PÁGINA (SIEMPRE PRIMERO) ---
 st.set_page_config(page_title="Sistema Comercial Dimiare", layout="wide")
 
@@ -344,6 +339,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
