@@ -40,31 +40,27 @@ def conectar_google():
         return None
 
 @st.cache_data(ttl=600)
-def cargar_datos(): # <--- Cambié el nombre para que coincida con tu línea de abajo
+def cargar_datos():
     doc = conectar_google()
     df_est = pd.DataFrame()
     df_reg = pd.DataFrame()
     
     if doc:
-        # Cargar Maestro (Estructura de Vendedores)
+        # 1. Cargar Estructura
         try:
             ws_est = doc.worksheet("Estructura")
             lista_est = ws_est.get_all_values()
             df_est = pd.DataFrame(lista_est[1:], columns=lista_est[0])
             df_est['DNI'] = df_est['DNI'].astype(str).str.replace(r'[^0-9]', '', regex=True).str.strip()
         except: 
-            df_est = pd.DataFrame()
+            pass
 
-        # Cargar Registros (Base de Datos)
+        # 2. Cargar Registros
         try:
             ws_reg = doc.sheet1
             df_reg = pd.DataFrame(ws_reg.get_all_records())
             df_reg.columns = [str(c).strip().upper() for c in df_reg.columns]
-        except: 
-            df_reg = pd.DataFrame()
             
-    return df_est, df_reg
-
 # --- 3. INICIALIZACIÓN DE VARIABLES DE SESIÓN ---
 if 'nom_v' not in st.session_state: st.session_state.nom_v = "N/A"
 if 'zon_v' not in st.session_state: st.session_state.zon_v = "N/A"
@@ -328,6 +324,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
