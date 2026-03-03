@@ -135,23 +135,37 @@ with tab1:
                     elif len(d_cl) < 8 or len(c1) != 9 or len(n_ped) != 10 or len(c_fe) != 13:
                         st.error("❌ Error en longitud de DNI (8), Celular (9), Pedido (10) o FE (13)."); error = True
 
+                # --- BLOQUE DE GUARDADO CON PROTECCIÓN (REEMPLAZA DESDE AQUÍ) ---
                 if not error:
-                    try:
-                        tz = pytz.timezone('America/Lima')
-                        ahora = datetime.now(tz)
-                        # IMPORTANTE: El apóstrofe f"'{variable}" protege los ceros iniciales
-                        fila = [
-                            ahora.strftime("%d/%m/%Y %H:%M:%S"), zon_v, f"'{dni_clean}", nom_v, sup_v, 
-                            detalle, t_op, n_cl, f"'{d_cl}", dir_ins, mail, f"'{c1}", "N/A", 
-                            prod, c_fe, f"'{n_ped}", pil, m_nv, n_ref, f"'{c_ref}", 
-                            ahora.strftime("%d/%m/%Y"), ahora.strftime("%H")
-                        ]
-                        conectar_google().sheet1.append_row(fila, value_input_option='USER_ENTERED')
-                        st.cache_data.clear()
-                        st.success("✅ ¡Registro guardado!")
-                        time.sleep(1); st.session_state.form_key += 1; st.rerun()
-                    except Exception as e: st.error(f"Error: {e}")
-
+                    intentos = 0
+                    exito = False
+                    while intentos < 3 and not exito:
+                        try:
+                            tz = pytz.timezone('America/Lima')
+                            ahora = datetime.now(tz)
+                            fila = [
+                                ahora.strftime("%d/%m/%Y %H:%M:%S"), zon_v, f"'{dni_clean}", nom_v, sup_v, 
+                                detalle, t_op, n_cl, f"'{d_cl}", dir_ins, mail, f"'{c1}", "N/A", 
+                                prod, c_fe, f"'{n_ped}", pil, m_nv, n_ref, f"'{c_ref}", 
+                                ahora.strftime("%d/%m/%Y"), ahora.strftime("%H")
+                            ]
+                            # Intentamos el envío
+                            conectar_google().sheet1.append_row(fila, value_input_option='USER_ENTERED')
+                            
+                            st.success("✅ ¡Registro guardado!")
+                            exito = True # Rompe el ciclo while
+                            time.sleep(1)
+                            st.session_state.form_key += 1
+                            st.rerun()
+                            
+                        except Exception as e:
+                            if "429" in str(e):
+                                intentos += 1
+                                st.warning(f"⏳ Google está saturado. Reintentando en 2 segundos... ({intentos}/3)")
+                                time.sleep(2) # Pausa técnica para liberar la "calle"
+                            else:
+                                st.error(f"❌ Error inesperado: {e}")
+                                break # Si es otro error, no reintentamos
 # --- PESTAÑA 2: MI PROGRESO (FILTRO POR NOMBRE) ---
 with tab_personal:
     if nom_v == "N/A":
@@ -277,6 +291,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
