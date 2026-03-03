@@ -8,6 +8,12 @@ import time
 import plotly.express as px
 import io
 
+# --- BLOQUE DE SEGURIDAD (MANTENIMIENTO) ---
+if st.secrets.get("mantenimiento", False):
+    st.error("⚠️ SISTEMA EN MANTENIMIENTO")
+    st.info("Estamos optimizando la base de datos. El servicio se restablecerá en breve para evitar errores de conexión. ¡Gracias!")
+    st.stop() # Esto detiene el resto de la web
+    
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Sistema Comercial Dimiare", layout="wide")
 # ----2 conexion
@@ -314,6 +320,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
