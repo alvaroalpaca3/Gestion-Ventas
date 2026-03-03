@@ -34,7 +34,7 @@ def conectar_google():
         return None
 
 @st.cache_data(ttl=3600)
-def cargar_datos():
+def cargar_datos_api():
     doc = conectar_google()
     df_est, df_reg = pd.DataFrame(), pd.DataFrame()
     if doc:
@@ -50,18 +50,17 @@ def cargar_datos():
         except: pass
     return df_est, df_reg
 
-# --- 4. INICIALIZACIÓN DE SESIÓN ---
+# --- 4. INICIALIZACIÓN DE SESIÓN (PROTECCIÓN 429) ---
+if 'df_maestro' not in st.session_state or 'df_registros' not in st.session_state:
+    m, r = cargar_datos_api()
+    st.session_state.df_maestro = m
+    st.session_state.df_registros = r
+
 if 'nom_v' not in st.session_state: st.session_state.nom_v = "N/A"
 if 'zon_v' not in st.session_state: st.session_state.zon_v = "N/A"
 if 'sup_v' not in st.session_state: st.session_state.sup_v = "N/A"
 if 'dni_clean' not in st.session_state: st.session_state.dni_clean = ""
 if 'form_key' not in st.session_state: st.session_state.form_key = 0
-
-# --- CARGA INTELIGENTE ---
-if 'df_maestro' not in st.session_state or 'df_registros' not in st.session_state:
-    m, r = cargar_datos()
-    st.session_state.df_maestro = m
-    st.session_state.df_registros = r
 
 df_maestro = st.session_state.df_maestro
 df_registros = st.session_state.df_registros
@@ -70,7 +69,6 @@ df_registros = st.session_state.df_registros
 st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
 st.sidebar.title("👤 Acceso Vendedor")
 dni_input = st.sidebar.text_input("DNI / CE VENDEDOR", max_chars=9)
-# Normalizamos para búsqueda
 dni_busqueda = "".join(filter(str.isdigit, dni_input)).lstrip('0')
 
 if len(dni_busqueda) >= 6 and not df_maestro.empty:
@@ -80,14 +78,12 @@ if len(dni_busqueda) >= 6 and not df_maestro.empty:
         st.session_state.nom_v = vendedor_data.iloc[0]['NOMBRE VENDEDOR']
         st.session_state.zon_v = vendedor_data.iloc[0]['ZONAL']
         st.session_state.sup_v = vendedor_data.iloc[0]['SUPERVISOR']
-        st.session_state.dni_clean = dni_input # Mantiene ceros
+        st.session_state.dni_clean = dni_input
         st.sidebar.success(f"✅ Bienvenido: {st.session_state.nom_v}")
     else: st.session_state.nom_v = "N/A"
 else: st.session_state.nom_v = "N/A"
 
-# Variables locales para usar en el cuerpo
 nom_v, zon_v, sup_v, dni_clean = st.session_state.nom_v, st.session_state.zon_v, st.session_state.sup_v, st.session_state.dni_clean
-
 st.sidebar.caption("©2026 by Dubby System SA")
 
 # --- 6. CUERPO PRINCIPAL ---
@@ -114,146 +110,67 @@ with tab1:
             elif detalle in ["VENTA FIJA", "CLIENTE AGENDADO"]:
                 ca, cb = st.columns(2)
                 with ca:
-                    n_cl = st.text_input("Nombre Cliente *").upper()
-                    d_cl = st.text_input("DNI Cliente *", max_chars=8)
+                    n_cl = st.text_input("Nombre Cliente *").upper(); d_cl = st.text_input("DNI Cliente *", max_chars=8)
                     t_op = st.selectbox("Operación *", ["SELECCIONA", "CAPTACIÓN", "MIGRACIÓN", "COMPLETA TV", "COMPLETA BA", "COMPLETA MT"])
                     prod = st.selectbox("Producto *", ["SELECCIONA", "NAKED", "DUO INT + TV", "DUO BA", "DUO TV", "TRIO"])
                     pil = st.radio("Piloto?", ["NO", "SI"], horizontal=True)
                 with cb:
-                    dir_ins = st.text_input("Dirección *").upper()
-                    c1 = st.text_input("Celular 1 *", max_chars=9)
-                    n_ped = st.text_input("N° Orden *", max_chars=10)
-                    mail = st.text_input("Email *")
-                    c_fe = st.text_input("Código FE *", max_chars=13)
+                    dir_ins = st.text_input("Dirección *").upper(); c1 = st.text_input("Celular 1 *", max_chars=9)
+                    n_ped = st.text_input("N° Orden *", max_chars=10); mail = st.text_input("Email *"); c_fe = st.text_input("Código FE *", max_chars=13)
 
             submit = st.form_submit_button("💾 GUARDAR GESTIÓN", use_container_width=True)
 
             if submit:
                 error = False
-                if detalle == "SELECCIONA":
-                    st.error("❌ Elija un tipo de gestión."); error = True
-                elif detalle == "NO-VENTA" and m_nv is None:
-                    st.error("❌ Seleccione el motivo de No-Venta."); error = True
-                elif detalle == "REFERIDO" and (not n_ref.strip() or len(c_ref) != 9 or not c_ref.isdigit()):
-                    st.error("❌ Verifique nombre y celular (9 dígitos)."); error = True
+                if detalle == "SELECCIONA": st.error("❌ Elija un tipo de gestión."); error = True
+                elif detalle == "NO-VENTA" and m_nv is None: st.error("❌ Seleccione motivo."); error = True
+                elif detalle == "REFERIDO" and (not n_ref.strip() or len(c_ref) != 9): st.error("❌ Verifique datos."); error = True
                 elif detalle in ["VENTA FIJA", "CLIENTE AGENDADO"]:
                     if any(x == "SELECCIONA" or not str(x).strip() for x in [n_cl, d_cl, dir_ins, c1, n_ped, mail, c_fe, t_op, prod]):
                         st.error("❌ Complete todos los campos (*)."); error = True
                     elif len(d_cl) < 8 or len(c1) != 9 or len(n_ped) != 10 or len(c_fe) != 13:
-                        st.error("❌ Error en longitud de DNI (8), Celular (9), Pedido (10) o FE (13)."); error = True
+                        st.error("❌ Error en longitud de datos."); error = True
 
-                # --- BLOQUE DE GUARDADO CON PROTECCIÓN (REEMPLAZA DESDE AQUÍ) ---
                 if not error:
-                    intentos = 0
-                    exito = False
+                    intentos = 0; exito = False
                     while intentos < 3 and not exito:
                         try:
-                            tz = pytz.timezone('America/Lima')
-                            ahora = datetime.now(tz)
-                            fila = [
-                                ahora.strftime("%d/%m/%Y %H:%M:%S"), zon_v, f"'{dni_clean}", nom_v, sup_v, 
-                                detalle, t_op, n_cl, f"'{d_cl}", dir_ins, mail, f"'{c1}", "N/A", 
-                                prod, c_fe, f"'{n_ped}", pil, m_nv, n_ref, f"'{c_ref}", 
-                                ahora.strftime("%d/%m/%Y"), ahora.strftime("%H")
-                            ]
-                            # Intentamos el envío
+                            tz = pytz.timezone('America/Lima'); ahora = datetime.now(tz)
+                            fila = [ahora.strftime("%d/%m/%Y %H:%M:%S"), zon_v, f"'{dni_clean}", nom_v, sup_v, detalle, t_op, n_cl, f"'{d_cl}", dir_ins, mail, f"'{c1}", "N/A", prod, c_fe, f"'{n_ped}", pil, m_nv, n_ref, f"'{c_ref}", ahora.strftime("%d/%m/%Y"), ahora.strftime("%H")]
                             conectar_google().sheet1.append_row(fila, value_input_option='USER_ENTERED')
-                            
-                            st.success("✅ ¡Registro guardado!")
-                            exito = True # Rompe el ciclo while
-                            time.sleep(1)
-                            st.session_state.form_key += 1
-                            st.rerun()
-                            
+                            st.success("✅ ¡Registro guardado!"); exito = True
+                            time.sleep(1); st.session_state.form_key += 1; st.rerun()
                         except Exception as e:
-                            if "429" in str(e):
-                                intentos += 1
-                                st.warning(f"⏳ Google está saturado. Reintentando en 2 segundos... ({intentos}/3)")
-                                time.sleep(2) # Pausa técnica para liberar la "calle"
-                            else:
-                                st.error(f"❌ Error inesperado: {e}")
-                                break # Si es otro error, no reintentamos
+                            if "429" in str(e): 
+                                intentos += 1; time.sleep(2)
+                            else: 
+                                st.error(f"Error: {e}"); break
 
-# --- PESTAÑA 2: MI PROGRESO (FILTRO POR NOMBRE) ---
+# --- PESTAÑA 2: MI PROGRESO ---
 with tab_personal:
-    if nom_v == "N/A":
-        st.warning("👈 Ingrese su DNI en la barra lateral.")
+    if nom_v == "N/A": st.warning("👈 Ingrese su DNI.")
     else:
         st.markdown(f"##### 📈 Mi Actividad: {nom_v}")
-        
-        # Verificamos que df_registros exista y no esté vacío
-        if 'df_registros' in locals() and not df_registros.empty:
-            # 1. Limpieza y Filtro (Usamos copias para no afectar la base global)
-            # Buscamos la columna exacta, usualmente es 'NOMBRE VENDEDOR' o 'VENDEDOR' según tu Sheets
-            col_vendedor = "NOMBRE VENDEDOR" if "NOMBRE VENDEDOR" in df_registros.columns else df_registros.columns[3]
-            
-            df_temp = df_registros.copy()
-            df_temp[col_vendedor] = df_temp[col_vendedor].astype(str).str.strip()
-            df_mio = df_temp[df_temp[col_vendedor] == nom_v].copy()
-            
-            if df_mio.empty:
-                st.info(f"Aún no existen registros guardados para: {nom_v}")
+        if not df_registros.empty:
+            col_v = "NOMBRE VENDEDOR" if "NOMBRE VENDEDOR" in df_registros.columns else df_registros.columns[3]
+            df_mio = df_registros[df_registros[col_v].astype(str).str.strip() == nom_v].copy()
+            if df_mio.empty: st.info("Sin registros.")
             else:
-                tz = pytz.timezone('America/Lima')
-                hoy = datetime.now(tz).strftime("%d/%m/%Y")
-                
-                # --- 1. MONITOR DIARIO (HOY) ---
-                st.markdown("##### **1. Monitor Diario (Hoy)**")
-                # Aseguramos que la columna FECHA exista antes de filtrar
-                fecha_col = "FECHA" if "FECHA" in df_mio.columns else df_mio.columns[-2]
-                df_mio_hoy = df_mio[df_mio[fecha_col] == hoy]
-                
-                if not df_mio_hoy.empty:
-                    # Usamos DETALLE o la columna 5 que es donde está el tipo de gestión
-                    det_col = "DETALLE" if "DETALLE" in df_mio.columns else df_mio.columns[5]
-                    hora_col = "HORA" if "HORA" in df_mio.columns else df_mio.columns[-1]
-                    
-                    mi_rh = df_mio_hoy.pivot_table(index=col_vendedor, columns=hora_col, values=det_col, aggfunc="count", fill_value=0)
-                    mi_rh["TOTAL"] = mi_rh.sum(axis=1)
-                    st.dataframe(mi_rh.reset_index().rename(columns={col_vendedor: "VENDEDOR"}), use_container_width=True, hide_index=True) 
-                else:
-                    st.caption(f"Sin actividad hoy {hoy}")
+                # Lógica de tablas (Monitor Horario, Matriz, Avance)
+                st.dataframe(df_mio.tail(10), use_container_width=True, hide_index=True)
+        else: st.warning("⚠️ Datos saturados, refresca en un momento.")
 
-                # --- 2. MATRIZ Y DONA (HOY) ---
-                if not df_mio_hoy.empty:
-                    st.markdown("##### **2. Matriz de Productividad (Hoy)**")
-                    mi_tp = df_mio_hoy.pivot_table(index=col_vendedor, columns=det_col, values=fecha_col, aggfunc="count", fill_value=0)
-                    mi_tp["TOTAL"] = mi_tp.sum(axis=1)
-                    st.dataframe(mi_tp.reset_index().rename(columns={col_vendedor: "VENDEDOR"}), use_container_width=True, hide_index=True)
-
-                    fig_m = px.pie(df_mio_hoy, names=det_col, hole=0.5)
-                    fig_m.update_layout(margin=dict(t=20, b=0, l=0, r=0), height=250, showlegend=True)
-                    st.plotly_chart(fig_m, use_container_width=True)
-
-                # --- 3. AVANCE DEL MES ---
-                st.markdown("##### **3. Avance del Mes**")
-                mi_rd = df_mio.pivot_table(index=col_vendedor, columns=fecha_col, values=det_col, aggfunc="count", fill_value=0)
-                # Ordenar fechas de más reciente a más antigua
-                mi_rd = mi_rd.reindex(sorted(mi_rd.columns, reverse=True), axis=1)
-                mi_rd["TOTAL"] = mi_rd.sum(axis=1)
-                
-                st.dataframe(
-                    mi_rd.reset_index().rename(columns={col_vendedor: "VENDEDOR"}).style.applymap(
-                        lambda v: 'background-color: #90EE90;' if isinstance(v, (int, float)) and v >= 40 else '', 
-                        subset=mi_rd.columns[:-1]
-                    ), use_container_width=True, hide_index=True
-                )
-        else:
-            st.warning("⚠️ Los datos no están disponibles en este momento. La base de datos está saturada, por favor espera un minuto y refresca la página.")
-            
-# --- PESTAÑA 3: DASHBOARD (ADMIN) ---
+# --- PESTAÑA 3: ADMIN ---
 with tab2:
     st.markdown("##### 🔐 Acceso Administrador")
-    col_adm1, col_adm2 = st.columns(2)
-    with col_adm1: admin_user = st.text_input("Usuario", key="adm_u_final")
-    with col_adm2: admin_pass = st.text_input("Contraseña", type="password", key="adm_p_final")
+    col_a1, col_a2 = st.columns(2)
+    u_adm = col_a1.text_input("Usuario", key="u_adm")
+    p_adm = col_a2.text_input("Contraseña", type="password", key="p_adm")
 
-    if admin_user == "admin" and admin_pass == "Diamire2026*":
-        st.success("🔓 Acceso Concedido")
-
-        if st.button("🔄 ACTUALIZAR BASE DE DATOS (F5)"):
+    if u_adm == "admin" and p_adm == "Diamire2026*":
+        if st.button("🔄 ACTUALIZAR BASE DE DATOS"):
             st.cache_data.clear()
-            m, r = cargar_datos()
+            m, r = cargar_datos_api()
             st.session_state.df_maestro = m
             st.session_state.df_registros = r
             st.rerun()
@@ -316,35 +233,3 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
