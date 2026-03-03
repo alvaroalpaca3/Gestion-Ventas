@@ -8,25 +8,26 @@ import time
 import plotly.express as px
 import io
 
-# --- 1. CONFIGURACIÓN DE PÁGINA (DEBE SER LO PRIMERO) ---
+import streamlit as st
+import pandas as pd
+from oauth2client.service_account import ServiceAccountCredentials
+import gspread
+
+# --- 1. CONFIGURACIÓN DE PÁGINA (SIEMPRE PRIMERO) ---
 st.set_page_config(page_title="Sistema Comercial Dimiare", layout="wide")
 
 # --- 2. BLOQUE DE SEGURIDAD (MANTENIMIENTO) ---
-mantenimiento_activo = st.secrets.get("mantenimiento", False)
-
-if mantenimiento_activo:
-    # Revisamos si en la URL pusiste ?admin=true
+# Usamos el secreto para pausar o dejar pasar al admin
+if st.secrets.get("mantenimiento", False):
     es_admin_probando = st.query_params.get("admin") == "true"
-    
     if not es_admin_probando:
         st.error("⚠️ SISTEMA EN MANTENIMIENTO")
-        st.info("Estamos optimizando la base de datos para mejorar la velocidad. Regresamos en breve.")
-        st.stop() 
+        st.info("Estamos optimizando la base de datos. Regresamos en breve.")
+        st.stop()
     else:
         st.sidebar.success("🛠️ MODO PRUEBA ACTIVO")
-        st.sidebar.info("Solo tú puedes ver la app ahora.")
 
-# --- 3. CONEXIÓN Y CARGA DE DATOS ---
+# --- 3. CONEXIÓN A GOOGLE ---
 def conectar_google():
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -39,42 +40,47 @@ def conectar_google():
         st.error(f"⚠️ Error de Conexión: {e}")
         return None
 
+# --- 4. CARGA DE DATOS (MANTENIENDO TUS NOMBRES) ---
 @st.cache_data(ttl=600)
-def cargar_datos():
+def cargar_datos(): # Volvemos al nombre que pide tu línea 79
     doc = conectar_google()
     df_est = pd.DataFrame()
     df_reg = pd.DataFrame()
     
     if doc:
-        # Cargar Estructura (Vendedores)
+        # Cargar Estructura
         try:
             ws_est = doc.worksheet("Estructura")
             lista_est = ws_est.get_all_values()
             df_est = pd.DataFrame(lista_est[1:], columns=lista_est[0])
             df_est['DNI'] = df_est['DNI'].astype(str).str.replace(r'[^0-9]', '', regex=True).str.strip()
-        except: 
-            df_est = pd.DataFrame()
+        except: pass
 
-        # Cargar Registros (Base de Datos)
+        # Cargar Registros
         try:
             ws_reg = doc.sheet1
             df_reg = pd.DataFrame(ws_reg.get_all_records())
             df_reg.columns = [str(c).strip().upper() for c in df_reg.columns]
-        except: 
-            df_reg = pd.DataFrame()
+        except: pass
             
     return df_est, df_reg
 
-# --- 4. EJECUCIÓN DE CARGA Y SESIÓN ---
+# --- 5. INICIALIZACIÓN Y EJECUCIÓN ---
+# Esto define las variables que causaban error en las líneas 84 y 116
 if 'nom_v' not in st.session_state: st.session_state.nom_v = "N/A"
 if 'zon_v' not in st.session_state: st.session_state.zon_v = "N/A"
 if 'sup_v' not in st.session_state: st.session_state.sup_v = "N/A"
 if 'dni_clean' not in st.session_state: st.session_state.dni_clean = ""
 
-# Cargamos los datos para que df_maestro exista
+# Línea 79: Ejecutamos la función
 df_maestro, df_registros = cargar_datos()
 
-# --- 5. BARRA LATERAL (ACCESO) ---
+# Definimos variables locales para que la línea 116 no falle
+nom_v = st.session_state.nom_v
+zon_v = st.session_state.zon_v
+sup_v = st.session_state.sup_v
+
+# --- 6. BARRA LATERAL (TU CÓDIGO ORIGINAL) ---
 st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
 st.sidebar.title("👤 Acceso Vendedor")
 
@@ -82,8 +88,7 @@ dni_input = st.sidebar.text_input("DNI / CE VENDEDOR", max_chars=9)
 dni_busqueda = "".join(filter(str.isdigit, dni_input)).lstrip('0')
 
 if len(dni_busqueda) >= 6:
-    if not df_maestro.empty:
-        # Normalizamos para match
+    if not df_maestro.empty: # Aquí ya no fallará la línea 84
         df_maestro['DNI_MATCH'] = df_maestro['DNI'].astype(str).str.replace(r'\.0$', '', regex=True).str.lstrip('0')
         vendedor_data = df_maestro[df_maestro['DNI_MATCH'] == dni_busqueda]
         
@@ -99,13 +104,23 @@ if len(dni_busqueda) >= 6:
 else:
     st.session_state.nom_v = "N/A"
 
-# --- 6. CUERPO PRINCIPAL ---
-st.title("Gestión de Ventas")
-st.write(f"**Vendedor:** {st.session_state.nom_v} | **Zonal:** {st.session_state.zon_v}")
+# --- 7. VERIFICACIÓN FINAL ---
+# Aquí tu línea 116 (if nom_v == "N/A") ya funcionará perfecto
+if st.session_state.nom_v == "N/A":
+    st.warning("Por favor, ingrese su DNI en la barra lateral para comenzar.")
+else:
+    st.write(f"Panel de gestión para: **{st.session_state.nom_v}**")
+    # Aquí sigue el resto de tu formulario...
 
 # Aquí iría tu formulario de registro...
 
 st.sidebar.caption("©2026 by Dubby System SA")
+
+# --- 6. CUERPO PRINCIPAL ---
+st.title("Gestión de Ventas")
+st.write(f"**Vendedor:** {st.session_state.nom_v} | **Zonal:** {st.session_state.zon_v}")
+
+
 
 # --- 5. CUERPO PRINCIPAL ---
 st.header("📊 GESTIÓN COMERCIAL")
@@ -329,6 +344,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
