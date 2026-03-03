@@ -16,35 +16,32 @@ def conectar_google():
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         
-        # Cargamos los secretos
+        if "gcp_service_account" not in st.secrets:
+            st.error("❌ No se configuraron los Secrets")
+            return None
+            
+        # Convertimos a dict y limpiamos
         creds_dict = dict(st.secrets["gcp_service_account"])
         
-        # --- LIMPIEZA EXTREMA DE LLAVE ---
-        raw_key = creds_dict["private_key"]
+        # LIMPIEZA TOTAL DE CARACTERES EXTRAÑOS
+        raw_key = str(creds_dict["private_key"])
         
-        # 1. Quitamos espacios accidentales
-        raw_key = raw_key.strip()
+        # Eliminamos saltos de línea literales, espacios y comillas accidentales
+        clean_key = raw_key.replace("\\n", "\n").strip()
         
-        # 2. Si la llave tiene saltos de línea reales, los quitamos y 
-        # luego volvemos a poner los \n correctos que espera Google.
-        if "-----BEGIN PRIVATE KEY-----" in raw_key:
-            # Quitamos el encabezado y pie temporalmente para limpiar el centro
-            header = "-----BEGIN PRIVATE KEY-----"
-            footer = "-----END PRIVATE KEY-----"
-            content = raw_key.replace(header, "").replace(footer, "").replace("\n", "").replace(" ", "")
-            # Reconstruimos la llave con el formato exacto de Google
-            clean_key = f"{header}\n{content}\n{footer}\n"
-        else:
-            clean_key = raw_key.replace("\\n", "\n")
-
+        # Si por error se pegó con comillas extras al inicio o fin, las quitamos
+        if clean_key.startswith('"') and clean_key.endswith('"'):
+            clean_key = clean_key[1:-1]
+            
         creds_dict["private_key"] = clean_key
-        # ---------------------------------
         
+        # Autorización
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
         
-        # Asegúrate de que el nombre del archivo en Google Drive sea exacto
+        # Asegúrate que el nombre sea "GestionDiaria" o "GestionDiaria_Final" según tu Excel
         return client.open("GestionDiaria")
+        
     except Exception as e:
         st.error(f"⚠️ Error de Conexión: {e}")
         return None
@@ -336,6 +333,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
