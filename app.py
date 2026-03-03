@@ -8,6 +8,9 @@ import time
 import plotly.express as px
 import io
 
+# --- 1. CONFIGURACIÓN DE PÁGINA ---
+st.set_page_config(page_title="Sistema Comercial Dimiare", layout="wide")
+
 # --- BLOQUE DE SEGURIDAD (MANTENIMIENTO CON LLAVE MAESTRA) ---
 mantenimiento_activo = st.secrets.get("mantenimiento", False)
 
@@ -23,8 +26,7 @@ if mantenimiento_activo:
         st.sidebar.success("🛠️ MODO PRUEBA ACTIVO")
         st.sidebar.info("Solo tú puedes ver la app ahora.")
     
-# --- 1. CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Sistema Comercial Dimiare", layout="wide")
+
 # ----2 conexion
 def conectar_google():
     try:
@@ -332,6 +334,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
