@@ -231,5 +231,6 @@ with tab2:
                 tp_final.style.set_properties(subset=(tp_final.index[-1:], slice(None)), **{'background-color': '#FFEB9C', 'font-weight': 'bold'}),
                 use_container_width=True
             )
-    elif admin_user != "" or admin_pass != "":
+    elif u_admin != "" or p_admin != "":
         st.error("❌ Credenciales incorrectas.")
+
