@@ -68,9 +68,6 @@ if len(dni_busqueda) >= 6 and not df_maestro.empty:
         st.sidebar.success(f"✅ Bienvenido: {st.session_state.nom_v}")
     else:
         st.session_state.nom_v = "N/A"
-else:
-    st.session_state.nom_v = "N/A"
-    st.info("👈 Ingrese su DNI en la barra lateral para habilitar el formulario.")
 
 st.sidebar.caption("©2026 by Dubby System SA")
 
@@ -296,6 +293,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
