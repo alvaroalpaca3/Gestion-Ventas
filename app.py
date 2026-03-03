@@ -57,7 +57,14 @@ if 'sup_v' not in st.session_state: st.session_state.sup_v = "N/A"
 if 'dni_clean' not in st.session_state: st.session_state.dni_clean = ""
 if 'form_key' not in st.session_state: st.session_state.form_key = 0
 
-df_maestro, df_registros = cargar_datos()
+# --- CARGA INTELIGENTE ---
+if 'df_maestro' not in st.session_state or 'df_registros' not in st.session_state:
+    m, r = cargar_datos()
+    st.session_state.df_maestro = m
+    st.session_state.df_registros = r
+
+df_maestro = st.session_state.df_maestro
+df_registros = st.session_state.df_registros
 
 # --- 5. BARRA LATERAL (ACCESO) ---
 st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
@@ -243,6 +250,14 @@ with tab2:
 
     if admin_user == "admin" and admin_pass == "Diamire2026*":
         st.success("🔓 Acceso Concedido")
+
+        if st.button("🔄 ACTUALIZAR BASE DE DATOS (F5)"):
+            st.cache_data.clear()
+            m, r = cargar_datos()
+            st.session_state.df_maestro = m
+            st.session_state.df_registros = r
+            st.rerun()
+            
         if not df_registros.empty:
             # FILTROS DE CONTROL
             f1, f2, f3 = st.columns(3)
@@ -301,6 +316,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
