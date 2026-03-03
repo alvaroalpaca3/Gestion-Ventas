@@ -8,104 +8,71 @@ import time
 import plotly.express as px
 import io
 
-# --- 1. CONFIGURACIÓN DE PÁGINA (SIEMPRE PRIMERO) ---
+# --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Sistema Comercial Dimiare", layout="wide")
 
 # --- 2. BLOQUE DE SEGURIDAD (MANTENIMIENTO) ---
-# Usamos el secreto para pausar o dejar pasar al admin
 if st.secrets.get("mantenimiento", False):
-    es_admin_probando = st.query_params.get("admin") == "true"
-    if not es_admin_probando:
+    if st.query_params.get("admin") != "true":
         st.error("⚠️ SISTEMA EN MANTENIMIENTO")
-        st.info("Estamos optimizando la base de datos. Regresamos en breve.")
         st.stop()
     else:
         st.sidebar.success("🛠️ MODO PRUEBA ACTIVO")
 
-# --- 3. CONEXIÓN A GOOGLE ---
+# --- 3. CONEXIÓN Y CARGA ---
 def conectar_google():
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds_dict = dict(st.secrets["gcp_service_account"])
         creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-        client = gspread.authorize(creds)
-        return client.open("GestionDiaria")
+        return gspread.authorize(creds).open("GestionDiaria")
     except Exception as e:
         st.error(f"⚠️ Error de Conexión: {e}")
         return None
 
-# --- 4. CARGA DE DATOS (MANTENIENDO TUS NOMBRES) ---
 @st.cache_data(ttl=600)
-def cargar_datos(): # Volvemos al nombre que pide tu línea 79
+def cargar_datos():
     doc = conectar_google()
-    df_est = pd.DataFrame()
-    df_reg = pd.DataFrame()
-    
+    df_est, df_reg = pd.DataFrame(), pd.DataFrame()
     if doc:
-        # Cargar Estructura
         try:
             ws_est = doc.worksheet("Estructura")
             lista_est = ws_est.get_all_values()
             df_est = pd.DataFrame(lista_est[1:], columns=lista_est[0])
             df_est['DNI'] = df_est['DNI'].astype(str).str.replace(r'[^0-9]', '', regex=True).str.strip()
-        except: pass
-
-        # Cargar Registros
-        try:
+            
             ws_reg = doc.sheet1
             df_reg = pd.DataFrame(ws_reg.get_all_records())
             df_reg.columns = [str(c).strip().upper() for c in df_reg.columns]
         except: pass
-            
     return df_est, df_reg
 
-# --- 5. INICIALIZACIÓN Y EJECUCIÓN ---
-# Esto define las variables que causaban error en las líneas 84 y 116
+# --- 4. SESIÓN Y EJECUCIÓN ---
 if 'nom_v' not in st.session_state: st.session_state.nom_v = "N/A"
 if 'zon_v' not in st.session_state: st.session_state.zon_v = "N/A"
-if 'sup_v' not in st.session_state: st.session_state.sup_v = "N/A"
-if 'dni_clean' not in st.session_state: st.session_state.dni_clean = ""
 
-# Línea 79: Ejecutamos la función
 df_maestro, df_registros = cargar_datos()
 
-# Definimos variables locales para que la línea 116 no falle
-nom_v = st.session_state.nom_v
-zon_v = st.session_state.zon_v
-sup_v = st.session_state.sup_v
-
-# --- 6. BARRA LATERAL (TU CÓDIGO ORIGINAL) ---
+# --- 5. BARRA LATERAL ---
 st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>DIAMIRE</h2>", unsafe_allow_html=True)
-st.sidebar.title("👤 Acceso Vendedor")
-
 dni_input = st.sidebar.text_input("DNI / CE VENDEDOR", max_chars=9)
 dni_busqueda = "".join(filter(str.isdigit, dni_input)).lstrip('0')
 
-if len(dni_busqueda) >= 6:
-    if not df_maestro.empty: # Aquí ya no fallará la línea 84
-        df_maestro['DNI_MATCH'] = df_maestro['DNI'].astype(str).str.replace(r'\.0$', '', regex=True).str.lstrip('0')
-        vendedor_data = df_maestro[df_maestro['DNI_MATCH'] == dni_busqueda]
-        
-        if not vendedor_data.empty:
-            st.session_state.nom_v = vendedor_data.iloc[0]['NOMBRE VENDEDOR']
-            st.session_state.zon_v = vendedor_data.iloc[0]['ZONAL']
-            st.session_state.sup_v = vendedor_data.iloc[0]['SUPERVISOR']
-            st.session_state.dni_clean = dni_input
-            st.sidebar.success(f"✅ Bienvenido: {st.session_state.nom_v}")
-        else:
-            st.session_state.nom_v = "N/A"
-            st.sidebar.error("❌ Documento no encontrado")
+if len(dni_busqueda) >= 6 and not df_maestro.empty:
+    df_maestro['DNI_MATCH'] = df_maestro['DNI'].astype(str).str.replace(r'\.0$', '', regex=True).str.lstrip('0')
+    vendedor_data = df_maestro[df_maestro['DNI_MATCH'] == dni_busqueda]
+    if not vendedor_data.empty:
+        st.session_state.nom_v = vendedor_data.iloc[0]['NOMBRE VENDEDOR']
+        st.session_state.zon_v = vendedor_data.iloc[0]['ZONAL']
+        st.sidebar.success(f"✅ Bienvenido: {st.session_state.nom_v}")
+    else:
+        st.session_state.nom_v = "N/A"
 else:
     st.session_state.nom_v = "N/A"
+    st.info("👈 Ingrese su DNI en la barra lateral para habilitar el formulario.")
 
 st.sidebar.caption("©2026 by Dubby System SA")
-
-# --- 6. CUERPO PRINCIPAL ---
-st.title("Gestión de Ventas")
-st.write(f"**Vendedor:** {st.session_state.nom_v} | **Zonal:** {st.session_state.zon_v}")
-
-
 
 # --- 5. CUERPO PRINCIPAL ---
 st.header("📊 GESTIÓN COMERCIAL")
@@ -329,6 +296,7 @@ with tab2:
             )
     elif admin_user != "" or admin_pass != "":
         st.error("❌ Credenciales incorrectas.")
+
 
 
 
